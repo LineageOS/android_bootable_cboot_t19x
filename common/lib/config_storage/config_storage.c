@@ -106,6 +106,7 @@ tegrabl_error_t init_storage_device(struct tegrabl_device_config_params *device_
 	tegrabl_error_t err = TEGRABL_NO_ERROR;
 	const char *device = "";
 	const char *source = "";
+	uint8_t flag = 0U;
 #if defined(CONFIG_ENABLE_SDCARD)
 	struct tegrabl_sd_platform_params sd_params;
 	uint32_t sd_instance = 0;
@@ -274,6 +275,10 @@ tegrabl_error_t tegrabl_usbmsd_bdev_open(uint32_t instance);
 #endif	/* USB_MS */
 	default:
 		pr_error("Failed: Unknown device %d\n", (uint32_t)device_type);
+		flag = 1U;
+		break;
+	}
+	if (flag == 1U) {
 		goto fail;
 	}
 
@@ -283,12 +288,21 @@ fail:
 	return err;
 }
 
+/**
+* @brief Placeholder for storing active boot device information
+*/
+static tegrabl_storage_type_t boot_device = TEGRABL_STORAGE_INVALID;
+
+tegrabl_storage_type_t mb2_get_boot_device(void)
+{
+	return boot_device;
+}
+
 tegrabl_error_t config_storage(struct tegrabl_device_config_params *device_config,
 							   struct tegrabl_device *devices)
 {
 	tegrabl_error_t err;
 	tegrabl_storage_type_t device;
-	tegrabl_storage_type_t boot_device;
 	uint32_t boot_dev_instance;
 	uint32_t i = 0;
 	static tegrabl_storage_type_t mb1_bct_to_blockdev_type[TEGRABL_BOOT_DEV_MAX] = {
@@ -318,7 +332,7 @@ tegrabl_error_t config_storage(struct tegrabl_device_config_params *device_confi
 
 	pr_info("Boot_device: %s instance: %u\n", tegrabl_blockdev_get_name(boot_device), boot_dev_instance);
 
-	err = init_storage_device(device_config, boot_device, boot_dev_instance);
+	err = init_storage_device(device_config, boot_device, (uint8_t)boot_dev_instance);
 	if (err != TEGRABL_NO_ERROR) {
 		pr_error("Failed to initialize boot device\n");
 		goto fail;

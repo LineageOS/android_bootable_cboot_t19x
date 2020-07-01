@@ -152,6 +152,7 @@ struct mrq_response {
 #define MRQ_QUERY_FW_TAG	71
 #define MRQ_FMON		72
 #define MRQ_EC			73
+#define MRQ_FBVOLT_STATUS	74
 
 /** @cond DEPRECATED */
 #define MRQ_RESERVED_2		2
@@ -179,7 +180,7 @@ struct mrq_response {
  * @brief Maximum MRQ code to be sent by CPU software to
  * BPMP. Subject to change in future
  */
-#define MAX_CPU_MRQ_ID		70
+#define MAX_CPU_MRQ_ID		74
 
 /**
  * @addtogroup MRQ_Payloads
@@ -204,6 +205,7 @@ struct mrq_response {
  *   @defgroup CC3 Auto-CC3
  *   @defgroup FMON FMON
  *   @defgroup EC EC
+ *   @defgroup Fbvolt_status Fuse Burn Voltage Status
  * @}
  */
 
@@ -320,7 +322,8 @@ struct mrq_query_fw_tag_response {
  * @def MRQ_MODULE_LOAD
  * @brief Dynamically load a BPMP code module
  *
- * * Platforms: All
+ * * Platforms: T210, T214, T186
+ * @cond (bpmp_t210 || bpmp_t214 || bpmp_t186)
  * * Initiators: CCPLEX
  * * Targets: BPMP
  * * Request Payload: @ref mrq_module_load_request
@@ -364,13 +367,15 @@ struct mrq_module_load_response {
 	/** @brief Handle to the loaded module */
 	uint32_t base;
 } __ABI_PACKED;
+/** @endcond*/
 
 /**
  * @ingroup MRQ_Codes
  * @def MRQ_MODULE_UNLOAD
  * @brief Unload a previously loaded code module
  *
- * * Platforms: All
+ * * Platforms: T210, T214, T186
+ * @cond (bpmp_t210 || bpmp_t214 || bpmp_t186)
  * * Initiators: CCPLEX
  * * Targets: BPMP
  * * Request Payload: @ref mrq_module_unload_request
@@ -390,6 +395,7 @@ struct mrq_module_unload_request {
 	/** @brief Handle of the module to unload */
 	uint32_t base;
 } __ABI_PACKED;
+/** @endcond*/
 
 /**
  * @ingroup MRQ_Codes
@@ -506,7 +512,8 @@ struct mrq_threaded_ping_response {
  * @def MRQ_MODULE_MAIL
  * @brief Send a message to a loadable module
  *
- * * Platforms: All
+ * * Platforms: T210, T214, T186
+ * @cond (bpmp_t210 || bpmp_t214 || bpmp_t186)
  * * Initiators: Any
  * * Targets: BPMP
  * * Request Payload: @ref mrq_module_mail_request
@@ -542,7 +549,7 @@ struct mrq_module_mail_response {
 	 */
 	uint8_t data[EMPTY_ARRAY];
 } __ABI_PACKED;
-
+/** @endcond */
 
 /** @cond PRIVATE */
 
@@ -574,7 +581,7 @@ struct mrq_heap_usage_response {
  * @def MRQ_DEBUGFS
  * @brief Interact with BPMP's debugfs file nodes
  *
- * * Platforms: T186
+ * * Platforms: T186, T194
  * * Initiators: Any
  * * Targets: BPMP
  * * Request Payload: @ref mrq_debugfs_request
@@ -718,7 +725,7 @@ struct mrq_debugfs_response {
  * @def MRQ_RESET
  * @brief Reset an IP block
  *
- * * Platforms: T186
+ * * Platforms: T186, T194
  * * Initiators: Any
  * * Targets: BPMP
  * * Request Payload: @ref mrq_reset_request
@@ -791,7 +798,7 @@ struct mrq_reset_response {
  * @def MRQ_I2C
  * @brief Issue an i2c transaction
  *
- * * Platforms: T186
+ * * Platforms: T186, T194
  * * Initiators: Any
  * * Targets: BPMP
  * * Request Payload: @ref mrq_i2c_request
@@ -846,7 +853,7 @@ struct serial_i2c_request {
  * @brief Trigger one or more i2c transactions
  */
 struct cmd_i2c_xfer_request {
-	/** @brief Valid bus number from mach-t186/i2c-t186.h*/
+	/** @brief Valid bus number from @ref bpmp_i2c_ids*/
 	uint32_t bus_id;
 
 	/** @brief Count of valid bytes in #data_buf*/
@@ -894,7 +901,7 @@ struct mrq_i2c_response {
  * @def MRQ_CLK
  * @brief Perform a clock operation
  *
- * * Platforms: T186
+ * * Platforms: T186, T194
  * * Initiators: Any
  * * Targets: BPMP
  * * Request Payload: @ref mrq_clk_request
@@ -1267,6 +1274,7 @@ enum mc_flush_req {
  * @brief Read the power-gating state of a partition
  *
  * * Platforms: T186
+ * @cond bpmp_t186
  * * Initiators: Any
  * * Targets: BPMP
  * * Request Payload: @ref mrq_pg_read_state_request
@@ -1299,7 +1307,7 @@ struct mrq_pg_read_state_response {
 	 */
 	uint32_t logic_state;
 } __ABI_PACKED;
-
+/** @endcond*/
 /** @} */
 
 /**
@@ -1310,6 +1318,7 @@ struct mrq_pg_read_state_response {
  * partition are reference counted.
  *
  * * Platforms: T186
+ * @cond bpmp_t186
  * * Initiators: Any
  * * Targets: BPMP
  * * Request Payload: @ref mrq_pg_update_state_request
@@ -1348,6 +1357,7 @@ struct mrq_pg_update_state_request {
 	 */
 	uint32_t clock_state;
 } __ABI_PACKED;
+/** @endcond*/
 
 /**
  * @ingroup MRQ_Codes
@@ -1356,7 +1366,12 @@ struct mrq_pg_update_state_request {
  * MRQ_PG_UPDATE_STATE, operations that change the power partition
  * state are NOT reference counted
  *
- * * Platforms: T186
+ * @note BPMP-FW forcefully turns off some partitions as part of SC7 entry
+ * because their state cannot be adequately restored on exit. Therefore,
+ * it is recommended to power off all domains via MRQ_PG prior to SC7 entry.
+ * See @ref bpmp_pdomain_ids for further detail.
+ *
+ * * Platforms: T186, T194
  * * Initiators: Any
  * * Targets: BPMP
  * * Request Payload: @ref mrq_pg_request
@@ -1513,7 +1528,7 @@ struct mrq_pg_response {
  * @def MRQ_THERMAL
  * @brief Interact with BPMP thermal framework
  *
- * * Platforms: T186
+ * * Platforms: T186, T194
  * * Initiators: Any
  * * Targets: Any
  * * Request Payload: TODO
@@ -1726,6 +1741,7 @@ union mrq_thermal_bpmp_to_host_response {
  * @brief Query CPU voltage hint data
  *
  * * Platforms: T186
+ * @cond bpmp_t186
  * * Initiators: CCPLEX
  * * Targets: BPMP
  * * Request Payload: @ref mrq_cpu_vhint_request
@@ -1776,7 +1792,7 @@ struct cpu_vhint_data {
 	/** reserved for future use */
 	uint16_t reserved[328];
 } __ABI_PACKED;
-
+/** @endcond */
 /** @} */
 
 /**
@@ -1784,7 +1800,7 @@ struct cpu_vhint_data {
  * @def MRQ_ABI_RATCHET
  * @brief ABI ratchet value query
  *
- * * Platforms: T186
+ * * Platforms: T186, T194
  * * Initiators: Any
  * * Targets: BPMP
  * * Request Payload: @ref mrq_abi_ratchet_request
@@ -1851,7 +1867,7 @@ struct mrq_abi_ratchet_response {
  * @def MRQ_EMC_DVFS_LATENCY
  * @brief Query frequency dependent EMC DVFS latency
  *
- * * Platforms: T186
+ * * Platforms: T186, T194
  * * Initiators: CCPLEX
  * * Targets: BPMP
  * * Request Payload: N/A
@@ -1889,6 +1905,7 @@ struct mrq_emc_dvfs_latency_response {
  * @brief CPU freq. limits in ndiv
  *
  * * Platforms: T194 onwards
+ * @cond bpmp_t194
  * * Initiators: CCPLEX
  * * Targets: BPMP
  * * Request Payload: @ref mrq_cpu_ndiv_limits_request
@@ -1922,6 +1939,7 @@ struct mrq_cpu_ndiv_limits_response {
 } __ABI_PACKED;
 
 /** @} */
+/** @endcond */
 
 /**
  * @ingroup MRQ_Codes
@@ -1929,6 +1947,7 @@ struct mrq_cpu_ndiv_limits_response {
  * @brief Query CPU cluster auto-CC3 configuration
  *
  * * Platforms: T194 onwards
+ * @cond bpmp_t194
  * * Initiators: CCPLEX
  * * Targets: BPMP
  * * Request Payload: @ref mrq_cpu_auto_cc3_request
@@ -1966,6 +1985,7 @@ struct mrq_cpu_auto_cc3_response {
 } __ABI_PACKED;
 
 /** @} */
+/** @endcond */
 
 /**
  * @ingroup MRQ_Codes
@@ -2181,6 +2201,7 @@ union mrq_ringbuf_console_bpmp_to_host_response {
  * @brief Set a strap value controlled by BPMP
  *
  * * Platforms: T194 onwards
+ * @cond bpmp_t194
  * * Initiators: CCPLEX
  * * Targets: BPMP
  * * Request Payload: @ref mrq_strap_request
@@ -2221,13 +2242,15 @@ struct mrq_strap_request {
  * @defgroup Strap_Ids Strap Identifiers
  * @}
  */
+/** @endcond */
 
 /**
  * @ingroup MRQ_Codes
  * @def MRQ_UPHY
  * @brief Perform a UPHY operation
  *
- * * Platforms: T194
+ * * Platforms: T194 onwards
+ * @cond bpmp_t194
  * * Initiators: CCPLEX
  * * Targets: BPMP
  * * Request Payload: @ref mrq_uphy_request
@@ -2325,13 +2348,15 @@ struct mrq_uphy_response {
 } __ABI_PACKED;
 
 /** @} */
+/** @endcond */
 
 /**
  * @ingroup MRQ_Codes
  * @def MRQ_FMON
  * @brief Perform a frequency monitor configuration operations
  *
- * * Platforms: T194
+ * * Platforms: T194 onwards
+ * @cond bpmp_t194
  * * Initiators: CCPLEX
  * * Targets: BPMP
  * * Request Payload: @ref mrq_fmon_request
@@ -2456,6 +2481,7 @@ struct mrq_fmon_response {
 } __ABI_PACKED;
 
 /** @} */
+/** @endcond */
 
 /**
  * @ingroup MRQ_Codes
@@ -2463,7 +2489,8 @@ struct mrq_fmon_response {
  * @brief Provide status information on faults reported by Error
  *        Collator (EC) to HSM.
  *
- * * Platforms: T194
+ * * Platforms: T194 onwards
+ * @cond bpmp_t194
  * * Initiators: CCPLEX
  * * Targets: BPMP
  * * Request Payload: @ref mrq_ec_request
@@ -2478,94 +2505,185 @@ enum {
 	/**
 	 * @brief Retrieve specified EC status.
 	 *
-	 * Query fails if specified EC is not owned by BPMP, or power
-	 * domain EC belongs to is turned off.
+	 * mrq_response::err is 0 if the operation was successful, or @n
+	 * -#BPMP_ENODEV if target EC is not owned by BPMP @n
+	 * -#BPMP_EACCES if target EC power domain is turned off
 	 */
 	CMD_EC_STATUS_GET = 1,
 	CMD_EC_NUM,
 };
 
-/** @brief EC error types. */
-enum {
-	/** @brief Parity error on internal data path */
+/** @brief BPMP ECs error types */
+enum bpmp_ec_err_type {
+	/** @brief Parity error on internal data path
+	 *
+	 *  Error descriptor @ref ec_err_simple_desc.
+	 */
 	EC_ERR_TYPE_PARITY_INTERNAL		= 1,
-	/** @brief ECC SEC error on internal data path */
-	EC_ERR_TYPE_ECC_SEC_INTERNAL		= 2,
-	/** @brief ECC DED error on internal data path */
-	EC_ERR_TYPE_ECC_DED_INTERNAL		= 3,
-	/** @brief Comparator error */
-	EC_ERR_TYPE_COMPARATOR			= 4,
-	/** @brief Register parity error */
-	EC_ERR_TYPE_REGISTER_PARITY		= 5,
-	/** @brief Parity error from on-chip SRAM/FIFO */
-	EC_ERR_TYPE_PARITY_SRAM			= 6,
-	/** @brief ECC SEC error from on-chip SRAM/FIFO */
-	EC_ERR_TYPE_ECC_SEC_SRAM		= 7,
-	/** @brief ECC DED error from on-chip SRAM/FIFO */
-	EC_ERR_TYPE_ECC_DED_SRAM		= 8,
-	/** @brief Clock Monitor error */
-	EC_ERR_TYPE_CLOCK_MONITOR		= 9,
-	/** @brief Voltage Monitor error */
-	EC_ERR_TYPE_VOLTAGE_MONITOR		= 10,
-	/** @brief Temperature error */
-	EC_ERR_TYPE_TEMPERATURE			= 11,
 
-	/** @brief SW Correctable error */
+	/** @brief ECC SEC error on internal data path
+	 *
+	 *  Error descriptor @ref ec_err_simple_desc.
+	 */
+	EC_ERR_TYPE_ECC_SEC_INTERNAL		= 2,
+
+	/** @brief ECC DED error on internal data path
+	 *
+	 *  Error descriptor @ref ec_err_simple_desc.
+	 */
+	EC_ERR_TYPE_ECC_DED_INTERNAL		= 3,
+
+	/** @brief Comparator error
+	 *
+	 *  Error descriptor @ref ec_err_simple_desc.
+	 */
+	EC_ERR_TYPE_COMPARATOR			= 4,
+
+	/** @brief Register parity error
+	 *
+	 *  Error descriptor @ref ec_err_reg_parity_desc.
+	 */
+	EC_ERR_TYPE_REGISTER_PARITY		= 5,
+
+	/** @brief Parity error from on-chip SRAM/FIFO
+	 *
+	 *  Error descriptor @ref ec_err_simple_desc.
+	 */
+	EC_ERR_TYPE_PARITY_SRAM			= 6,
+
+	/** @brief Clock Monitor error
+	 *
+	 *  Error descriptor @ref ec_err_fmon_desc.
+	 */
+	EC_ERR_TYPE_CLOCK_MONITOR		= 9,
+
+	/** @brief Voltage Monitor error
+	 *
+	 *  Error descriptor @ref ec_err_vmon_desc.
+	 */
+	EC_ERR_TYPE_VOLTAGE_MONITOR		= 10,
+
+	/** @brief SW Correctable error
+	 *
+	 *  Error descriptor @ref ec_err_simple_desc.
+	 */
 	EC_ERR_TYPE_SW_CORRECTABLE		= 16,
-	/** @brief SW Uncorrectable error */
+
+	/** @brief SW Uncorrectable error
+	 *
+	 *  Error descriptor @ref ec_err_simple_desc.
+	 */
 	EC_ERR_TYPE_SW_UNCORRECTABLE		= 17,
 
-	/** @brief Other HW Correctable error */
+	/** @brief Other HW Correctable error
+	 *
+	 *  Error descriptor @ref ec_err_simple_desc.
+	 */
 	EC_ERR_TYPE_OTHER_HW_CORRECTABLE	= 32,
-	/** @brief Other HW Uncorrectable error */
+
+	/** @brief Other HW Uncorrectable error
+	 *
+	 *  Error descriptor @ref ec_err_simple_desc.
+	 */
 	EC_ERR_TYPE_OTHER_HW_UNCORRECTABLE	= 33,
 };
 
 /** @brief Group of registers with parity error. */
-enum {
+enum ec_registers_group {
 	/** @brief Functional registers group */
 	EC_ERR_GROUP_FUNC_REG		= 0,
 	/** @brief SCR registers group */
 	EC_ERR_GROUP_SCR_REG		= 1,
 };
 
+/**
+ * @defgroup bpmp_ec_status_flags EC Status Flags
+ * @addtogroup bpmp_ec_status_flags
+ * @{
+ */
 /** @brief No EC error found flag */
 #define EC_STATUS_FLAG_NO_ERROR		0x0001
 /** @brief Last EC error found flag */
 #define EC_STATUS_FLAG_LAST_ERROR	0x0002
-/** @brief EC error resolved flag */
-#define EC_STATUS_FLAG_RESOLVED_ERROR	0x0004
 /** @brief EC latent error flag */
-#define EC_STATUS_FLAG_LATENT_ERROR	0x0008
+#define EC_STATUS_FLAG_LATENT_ERROR	0x0004
+/** @} */
 
+/**
+ * @defgroup bpmp_ec_desc_flags EC Descriptor Flags
+ * @addtogroup bpmp_ec_desc_flags
+ * @{
+ */
+/** @brief EC descriptor error resolved flag */
+#define EC_DESC_FLAG_RESOLVED		0x0001
+/** @brief EC descriptor failed to retrieve id flag */
+#define EC_DESC_FLAG_NO_ID		0x0002
+/** @} */
+
+/**
+ * |error type                       | fmon_clk_id values        |
+ * |---------------------------------|---------------------------|
+ * |@ref EC_ERR_TYPE_CLOCK_MONITOR   |@ref bpmp_clock_ids        |
+ */
 struct ec_err_fmon_desc {
-	/** @brief FMON monitored clock id. */
-	uint32_t fmon_clk_id;
-	/** @brief FMON faults bitmask */
+	/** @brief Bitmask of @ref bpmp_ec_desc_flags  */
+	uint16_t desc_flags;
+	/** @brief FMON monitored clock id */
+	uint16_t fmon_clk_id;
+	/** @brief Bitmask of @ref bpmp_fmon_faults_flags */
 	uint32_t fmon_faults;
 	/** @brief FMON faults access error */
 	int32_t fmon_access_error;
 } __ABI_PACKED;
 
+/**
+ * |error type                       | vmon_adc_id values        |
+ * |---------------------------------|---------------------------|
+ * |@ref EC_ERR_TYPE_VOLTAGE_MONITOR |@ref bpmp_adc_ids          |
+ */
 struct ec_err_vmon_desc {
-	/** @brief VMON rail adc id. */
-	uint32_t vmon_adc_id;
-	/** @brief VMON faults bitmask */
+	/** @brief Bitmask of @ref bpmp_ec_desc_flags  */
+	uint16_t desc_flags;
+	/** @brief VMON rail adc id */
+	uint16_t vmon_adc_id;
+	/** @brief Bitmask of @ref bpmp_vmon_faults_flags */
 	uint32_t vmon_faults;
 	/** @brief VMON faults access error */
 	int32_t vmon_access_error;
 } __ABI_PACKED;
 
+/**
+ * |error type                       | reg_id values             |
+ * |---------------------------------|---------------------------|
+ * |@ref EC_ERR_TYPE_REGISTER_PARITY |@ref bpmp_ec_registers_ids |
+ */
 struct ec_err_reg_parity_desc {
-	/** @brief Register id. */
-	uint32_t reg_id;
-	/** @brief Register group (SCR or functional).  */
-	uint32_t reg_group;
+	/** @brief Bitmask of @ref bpmp_ec_desc_flags  */
+	uint16_t desc_flags;
+	/** @brief Register id */
+	uint16_t reg_id;
+	/** @brief Register group @ref ec_registers_group */
+	uint16_t reg_group;
 } __ABI_PACKED;
 
+/**
+ * |error type                              | err_source_id values      |
+ * |----------------------------------------|---------------------------|
+ * |@ref EC_ERR_TYPE_PARITY_INTERNAL        |@ref bpmp_ec_ipath_ids     |
+ * |@ref EC_ERR_TYPE_ECC_SEC_INTERNAL       |@ref bpmp_ec_ipath_ids     |
+ * |@ref EC_ERR_TYPE_ECC_DED_INTERNAL       |@ref bpmp_ec_ipath_ids     |
+ * |@ref EC_ERR_TYPE_COMPARATOR             |@ref bpmp_ec_comparator_ids|
+ * |@ref EC_ERR_TYPE_PARITY_SRAM            |@ref bpmp_clock_ids        |
+ * |@ref EC_ERR_TYPE_SW_CORRECTABLE         |@ref bpmp_ec_misc_ids      |
+ * |@ref EC_ERR_TYPE_SW_UNCORRECTABLE       |@ref bpmp_ec_misc_ids      |
+ * |@ref EC_ERR_TYPE_OTHER_HW_CORRECTABLE   |@ref bpmp_ec_misc_ids      |
+ * |@ref EC_ERR_TYPE_OTHER_HW_UNCORRECTABLE |@ref bpmp_ec_misc_ids      |
+ */
 struct ec_err_simple_desc {
+	/** @brief Bitmask of @ref bpmp_ec_desc_flags  */
+	uint16_t desc_flags;
 	/** @brief Error source id. Id space depends on error type. */
-	uint32_t err_source_id;
+	uint16_t err_source_id;
 } __ABI_PACKED;
 
 /** @brief Union of EC error descriptors */
@@ -2581,21 +2699,26 @@ struct cmd_ec_status_get_request {
 	uint32_t ec_hsm_id;
 } __ABI_PACKED;
 
+/** EC status maximum number of descriptors */
+#define EC_ERR_STATUS_DESC_MAX_NUM	4
+
 struct cmd_ec_status_get_response {
 	/** @brief Target EC id (the same id received with request). */
 	uint32_t ec_hsm_id;
 	/**
-	 * @brief Bitmask of EC_STATUS_FLAG_ flags.
+	 * @brief Bitmask of @ref bpmp_ec_status_flags
 	 *
 	 * If NO_ERROR flag is set, error_ fields should be ignored
 	 */
-	uint32_t status_flags;
+	uint32_t ec_status_flags;
 	/** @brief Found EC error index. */
 	uint32_t error_idx;
-	/** @brief  Found EC error type. */
+	/** @brief  Found EC error type @ref bpmp_ec_err_type. */
 	uint32_t error_type;
-	/** @brief  Found EC error descriptor.  */
-	union ec_err_desc error_desc;
+	/** @brief  Number of returned EC error descriptors */
+	uint32_t error_desc_num;
+	/** @brief  EC error descriptors */
+	union ec_err_desc error_descs[EC_ERR_STATUS_DESC_MAX_NUM];
 } __ABI_PACKED;
 
 /**
@@ -2607,7 +2730,7 @@ struct cmd_ec_status_get_response {
  *
  * |sub-command                 |payload                |
  * |----------------------------|-----------------------|
- * |CMD_EC_STATUS_GET           |-                      |
+ * |@ref CMD_EC_STATUS_GET      |ec_status_get          |
  *
  */
 
@@ -2629,7 +2752,7 @@ struct mrq_ec_request {
  *
  * |sub-command                 |payload                 |
  * |----------------------------|------------------------|
- * |CMD_EC_STATUS_GET           |ec_status_get           |
+ * |@ref CMD_EC_STATUS_GET      |ec_status_get           |
  *
  */
 
@@ -2640,6 +2763,39 @@ struct mrq_ec_response {
 } __ABI_PACKED;
 
 /** @} */
+/** @endcond */
+
+/**
+ * @ingroup MRQ_Codes
+ * @def MRQ_FBVOLT_STATUS
+ * @brief Provides status information about voltage state for fuse burning
+ *
+ * * Platforms: T194 onwards
+ * @cond bpmp_t194
+ * * Initiators: CCPLEX
+ * * Target: BPMP
+ * * Request Payload: None
+ * * Response Payload: @ref mrq_fbvolt_status_response
+ * @{
+ */
+
+/**
+ * @ingroup Fbvolt_status
+ * @brief Response to #MRQ_FBVOLT_STATUS
+ *
+ * Value of #ready reflects if core voltages are in a suitable state for buring
+ * fuses. A value of 0x1 indicates that core voltages are ready for burning
+ * fuses. A value of 0x0 indicates that core voltages are not ready.
+ */
+struct mrq_fbvolt_status_response {
+	/** @brief Bit [0:0] - ready status, bits [31:1] - reserved */
+	uint32_t ready;
+	/** @brief Reserved */
+	uint32_t unused;
+} __ABI_PACKED;
+
+/** @} */
+/** @endcond */
 
 /**
  * @addtogroup Error_Codes

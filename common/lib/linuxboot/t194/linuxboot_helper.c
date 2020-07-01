@@ -28,6 +28,7 @@
 #include <tegrabl_sdram_usage.h>
 #include <tegrabl_cpubl_params.h>
 #include <linux_load.h>
+#include <tegrabl_ar_macro.h>
 #include <armiscreg.h>
 #include <arscratch.h>
 #include <tegrabl_fuse.h>
@@ -42,6 +43,8 @@
 #include <tegrabl_blockdev.h>
 #include <tegrabl_storage_device_params.h>
 #include <tegrabl_vprinfo.h>
+#include <cboot_rollback_protection.h>
+#include <nvboot_boot_component.h>
 
 #if defined(CONFIG_ENABLE_STAGED_SCRUBBING)
 #include <qual_engine.h>
@@ -65,6 +68,11 @@
 
 extern struct tboot_cpubl_params *boot_params;
 static uint64_t os_carveout_next_free_addr;
+
+static const uint32_t oem_fw_bin_type_mapping[TEGRABL_BINARY_MAX] = {
+	[TEGRABL_BINARY_KERNEL] = OEM_FW_RATCHET_IDX_KERNEL,
+	[TEGRABL_BINARY_KERNEL_DTB] = OEM_FW_RATCHET_IDX_KERNEL_DTB,
+};
 
 static int add_tegraid(char *cmdline, int len, char *param, void *priv)
 {
@@ -1193,7 +1201,6 @@ static void calculate_unscrubbed_dram_regions(void)
 		case CARVEOUT_TSECB:
 		case CARVEOUT_SC7_RF:
 		case CARVEOUT_SE_SC7:
-		case CARVEOUT_XUSB:
 		case CARVEOUT_MTS:
 		case CARVEOUT_MB2:
 		case CARVEOUT_MISC:
@@ -1288,7 +1295,7 @@ tegrabl_error_t dram_staged_scrub(void)
 
 tegrabl_error_t tegrabl_get_nct_load_addr(void **load_addr)
 {
-	static void *nct_load_addr = NULL;
+	static void *nct_load_addr;
 	tegrabl_error_t err = TEGRABL_NO_ERROR;
 
 	if (nct_load_addr == NULL) {
@@ -1310,7 +1317,7 @@ fail:
 
 tegrabl_error_t tegrabl_get_boot_img_load_addr(void **load_addr)
 {
-	static void *boot_img_load_addr = NULL;
+	static void *boot_img_load_addr;
 	tegrabl_error_t err = TEGRABL_NO_ERROR;
 
 	if (boot_img_load_addr == NULL) {
@@ -1388,4 +1395,36 @@ uint64_t tegrabl_get_ramdisk_load_addr(void)
 	os_carveout_next_free_addr = ramdisk_load_addr + RAMDISK_MAX_SIZE;
 
 	return ramdisk_load_addr;
+}
+
+bool tegrabl_do_ratchet_check(uint8_t bin_type, void * const addr)
+{
+	NvBootComponentHeader *bch_addr;
+	uint8_t num_bins;
+	uint8_t i;
+	uint8_t fw_ratchet_idx;
+	uint8_t min_ratchet_level;
+	uint8_t fw_ratchet_level;
+	bool status;
+
+	bch_addr = addr;
+	num_bins = bch_addr->NumBinaries2;
+
+	fw_ratchet_idx = oem_fw_bin_type_mapping[bin_type];
+	min_ratchet_level = boot_params->min_ratchet[fw_ratchet_idx];
+
+	for (i = 0; i < num_bins; i++) {
+		fw_ratchet_level = bch_addr->Stage2Components[i].Version.RatchetLevel;
+		pr_trace("%u: min ratchet level: %u, fw ratchet level: %u\n", i, min_ratchet_level, fw_ratchet_level);
+		if ((min_ratchet_level != 0) && (min_ratchet_level > fw_ratchet_level)) {
+			pr_error("Binary (%u), ratchet version mismatch, expected (>%u), current (%u)\n",
+					 bin_type, min_ratchet_level, fw_ratchet_level);
+			status = false;
+			goto fail;
+		}
+	}
+	status = true;
+
+fail:
+	return status;
 }

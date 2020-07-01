@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016 - 2017, NVIDIA Corporation.  All Rights Reserved.
+# Copyright (c) 2016 - 2018, NVIDIA Corporation.  All Rights Reserved.
 #
 # NVIDIA Corporation and its licensors retain all intellectual property and
 # proprietary rights in and to this software and related documentation.  Any
@@ -15,8 +15,7 @@ MODULE := $(LOCAL_DIR)
 GLOBAL_INCLUDES += \
 	$(LOCAL_DIR)/../../../include \
 	$(LOCAL_DIR)/../../../include/soc/$(TARGET) \
-	$(LOCAL_DIR)/../../../include/drivers \
-	$(LOCAL_DIR)/../../../../../t18x/common/include/drivers
+	$(LOCAL_DIR)/../../../include/drivers
 
 
 MODULE_SRCS += \

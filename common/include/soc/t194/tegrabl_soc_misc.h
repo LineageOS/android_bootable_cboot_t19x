@@ -301,8 +301,11 @@ void tegrabl_reset_fallback_scratch(void);
 /**
  * @brief Triggers recovery boot chain if current boot chain is primary or
  * vice-versa.
+ *
+ * @param bootchain_max_retries specifies the max count to retry a particular
+ *        bootchain, before switching.
  */
-void tegrabl_trigger_fallback_boot_chain(void);
+void tegrabl_trigger_fallback_boot_chain(const uint32_t bootchain_max_retries);
 
 /**
  * @brief get soc chip info from register
@@ -369,5 +372,14 @@ uint32_t tegrabl_get_boot_slot_reg(void);
  * @return TEGRABL_NO_ERROR if success; error code otherwise
  */
 tegrabl_error_t tegrabl_get_ecid_str(char *ecid_str, uint32_t size);
+
+/**
+ * @brief checks if the given slot has non zero key
+ *
+ * @param keyslot to be checked
+ *
+ * @return true if the key is non zero
+*/
+bool tegrabl_keyslot_check_if_key_is_nonzero(uint8_t keyslot);
 
 #endif /* INCLUDED_TEGRABL_SOC_MISC_H */

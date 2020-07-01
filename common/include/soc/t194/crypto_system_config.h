@@ -56,6 +56,8 @@
 #define HAVE_PKA1_SCC_DPA	1 // PKA1 SCC features (default:1)
 #define HAVE_PKA1_BLINDING	0 // PKA1 priv key operation blinding (default:1)
 #define HAVE_JUMP_PROBABILITY	1 // PKA1 jump probability (default:1)
+#define HAVE_SE_ASYNC			1
+#define HAVE_SE_ASYNC_SHA		1
 
 // For evaluating PKA1 KEY LOADING
 // PKA1 RSA key loading seems to work

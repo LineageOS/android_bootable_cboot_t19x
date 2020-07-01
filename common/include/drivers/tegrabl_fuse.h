@@ -52,6 +52,7 @@ typedef uint32_t fuse_type_t;
 #define FUSE_SOC_SPEEDO2 0xb
 #define FUSE_ENABLED_CPU_CORES 0xc
 #define FUSE_APB2JTAG_DISABLE 0xd
+#define FUSE_PRIVATE1 FUSE_APB2JTAG_DISABLE
 #define FUSE_TPC_DISABLE 0xe
 #define FUSE_APB2JTAG_LOCK 0xf
 #define FUSE_SOC_IDDQ 0x10
@@ -98,6 +99,7 @@ typedef uint32_t fuse_type_t;
 #define FUSE_SKIP_DEV_SEL_STRAPS 0x2e
 #define FUSE_BOOT_DEVICE_INFO 0x2f
 #define FUSE_SECURE_PROVISION_INFO 0x30
+#define FUSE_PRIVATE2 FUSE_SECURE_PROVISION_INFO
 #define FUSE_KEK0 0x31
 #define FUSE_KEK1 0x32
 #define FUSE_ENDORSEMENT_KEY 0x33
@@ -127,6 +129,10 @@ typedef uint32_t fuse_type_t;
 #define FUSE_CCPLEX_UCODE_MB1_FALCON_UCODE_FLD_RATCHET3 0x42
 #define FUSE_CCPLEX_UCODE_MB1_FALCON_UCODE_FLD_RATCHET3_REDUNDANT FUSE_CCPLEX_UCODE_MB1_FALCON_UCODE_FLD_RATCHET3
 #define FUSE_MB1_NV_REVISION 0x43
+#define FUSE_FORCE_DEBUG_WITH_TEST_KEYS 0x44
+#define FUSE_SECURE_IN_SYSTEM_BIST_CONTROL 0x45
+#define FUSE_FLW2 0x46
+#define FUSE_OPT_CUSTOMER_OPTIN_FUSE 0x47
 #define FUSE_FORCE32 0x7FFFFFFF
 
 /*
@@ -323,12 +329,27 @@ void tegrabl_pmc_fuse_control_ps18_latch_set(void);
  *
  */
 void tegrabl_pmc_fuse_control_ps18_latch_clear(void);
+
 /*
  * @brief reads bootrom patch version
  *
  * @return bootrom patch version
  */
 uint32_t tegrabl_fuse_get_bootrom_patch_version(void);
+
+/*
+ * @brief reads chip sku info
+ *
+ * @return chip sku info
+ */
+uint32_t tegrabl_fuse_get_sku_info(void);
+
+/*
+ * @brief reads ram svop pdp svt
+ *
+ * @return ram svop pdp svt
+ */
+uint32_t tegrabl_fuse_get_ram_svop_pdp_svt(void);
 
 /*
  * @brief reads ft revision for given address

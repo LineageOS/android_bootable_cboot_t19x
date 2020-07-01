@@ -596,12 +596,14 @@ static int32_t tegrabl_module_to_bpmp_id(
 		if (clk_or_rst == MOD_CLK) {
 			return TEGRA194_CLK_UFSDEV_REF;
 		}
+		break;
 	}
 	case TEGRABL_MODULE_UFSHC_CG_SYS:
 	{
 		if (clk_or_rst == MOD_CLK) {
 			return TEGRA194_CLK_UFSHC;
 		}
+		break;
 	}
 	case TEGRABL_MODULE_EQOS:
 	{
@@ -615,6 +617,7 @@ static int32_t tegrabl_module_to_bpmp_id(
 		if (clk_or_rst == MOD_CLK) {
 			return TEGRA194_CLK_AXI_CBB;
 		}
+		break;
 	}
 	case TEGRABL_MODULE_PEX_USB_UPHY:
 	{

@@ -13,6 +13,14 @@
 #include <tegrabl_error.h>
 #include <tegrabl_compiler.h>
 #include <tegrabl_storage_device_params.h>
+#include <tegrabl_blockdev.h>
+
+/**
+ * @brief to get active boot device
+ *
+ * @return active boot device.
+ */
+tegrabl_storage_type_t mb2_get_boot_device(void);
 
 /**
  * @brief Configure storage based on data in mb1 bct

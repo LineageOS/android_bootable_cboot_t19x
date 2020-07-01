@@ -16,6 +16,7 @@
 #include <tegrabl_io.h>
 #include <tegrabl_debug.h>
 #include <tegrabl_drf.h>
+#include <tegrabl_ar_macro.h>
 #include <tegrabl_blockdev.h>
 #include <tegrabl_addressmap.h>
 #include <tegrabl_partition_loader.h>
@@ -45,14 +46,14 @@
 	tegrabl_trace_read32((uint32_t)NV_ADDRESS_MAP_TOP0_HSP_DB_0_BASE + (reg))
 
 #define PMC_READ(reg)						\
-		NV_READ32(NV_ADDRESS_MAP_PMC_IMPL_BASE + PMC_IMPL_##reg##_0)
+		NV_READ32((uint32_t)NV_ADDRESS_MAP_PMC_IMPL_BASE + (uint32_t)PMC_IMPL_##reg##_0)
 #define PMC_WRITE(reg, val)					\
 		NV_WRITE32(NV_ADDRESS_MAP_PMC_IMPL_BASE + PMC_IMPL_##reg##_0, val)
 
 #define SCRATCH_WRITE(reg, val)			\
-		NV_WRITE32(NV_ADDRESS_MAP_SCRATCH_BASE + SCRATCH_##reg, val)
+		NV_WRITE32((uint32_t)NV_ADDRESS_MAP_SCRATCH_BASE + (uint32_t)SCRATCH_##reg, val)
 #define SCRATCH_READ(reg)			\
-		NV_READ32(NV_ADDRESS_MAP_SCRATCH_BASE + SCRATCH_##reg)
+		NV_READ32((uint32_t)NV_ADDRESS_MAP_SCRATCH_BASE + (uint32_t)SCRATCH_##reg)
 
 #define MISCREG_READ(reg) NV_READ32(NV_ADDRESS_MAP_MISC_BASE + (reg))
 
@@ -62,6 +63,8 @@
 #define RECOVERY_BOOT_CHAIN_VALUE 0x1U
 #define RECOVERY_BOOT_CHAIN_MASK  0x1U
 #define BOOT_CHAIN_INVALID_MASK 0x2U
+#define BOOT_CHAIN_RETRY_SHIFT	16U
+#define BOOT_CHAIN_RETRY_MASK	(0xFUL << BOOT_CHAIN_RETRY_SHIFT)
 
 #define HSM_RESET_UNCORRECTABLE_ERROR_MAGIC 0xD0A00ECCUL
 
@@ -249,6 +252,7 @@ bool tegrabl_rst_is_l0_l1a(void)
 			}
 		default:
 			ret = false;
+			break;
 		}
 	}
 
@@ -466,11 +470,27 @@ void tegrabl_reset_fallback_scratch(void)
 	SCRATCH_WRITE(SCRATCH_99, 0);
 }
 
-void tegrabl_trigger_fallback_boot_chain(void)
+void tegrabl_trigger_fallback_boot_chain(const uint32_t bootchain_max_retries)
 {
 	uint32_t reg = 0;
+	uint32_t boot_chain_retry;
 
 	reg = SCRATCH_READ(SCRATCH_99);
+
+	boot_chain_retry = (reg & BOOT_CHAIN_RETRY_MASK) >> BOOT_CHAIN_RETRY_SHIFT;
+
+	/* Retry the same bootchain if MAX_RETRIES is not elapsed*/
+	if (boot_chain_retry < bootchain_max_retries) {
+		/* increment value of retry */
+		reg += (1UL << BOOT_CHAIN_RETRY_SHIFT);
+		SCRATCH_WRITE(SCRATCH_99, reg);
+		pr_critical("Retry_%u : Resetting device for the same boot chain\n", boot_chain_retry);
+		tegrabl_pmc_reset();
+		pr_critical("Should not be reaching here.\n");
+		while (true) {
+			;
+		}
+	}
 
 	/* check if other chain is corrupted or not by checking bit[1]*/
 	if ((reg  & BOOT_CHAIN_INVALID_MASK) == BOOT_CHAIN_INVALID_MASK) {
@@ -495,6 +515,8 @@ void tegrabl_trigger_fallback_boot_chain(void)
 	reg |= BOOT_CHAIN_INVALID_MASK;
 	/*toggle bit[0] to boot from other chain*/
 	reg ^= (0x1U);
+	/* clear the boot_chain_retry count, as there should be retry for other chain */
+	reg = reg & (~BOOT_CHAIN_RETRY_MASK);
 
 	SCRATCH_WRITE(SCRATCH_99, reg);
 
@@ -524,7 +546,7 @@ bool tegrabl_is_fpga(void)
 {
 	uint32_t reg;
 
-	reg = NV_READ32(NV_ADDRESS_MAP_MISC_BASE + MISCREG_HIDREV_0);
+	reg = NV_READ32((uint32_t)NV_ADDRESS_MAP_MISC_BASE + (uint32_t)MISCREG_HIDREV_0);
 
 	return (NV_DRF_VAL(MISCREG, HIDREV, PRE_SI_PLATFORM, reg) ==
 			MISCREG_HIDREV_0_PRE_SI_PLATFORM_SYSTEM_FPGA);
@@ -551,7 +573,7 @@ void tegrabl_get_chip_info(struct tegrabl_chip_info *info)
 		info->minor = NV_DRF_VAL(MISCREG, HIDREV, MINORREV, reg);
 		info->pre_si_platform = NV_DRF_VAL(MISCREG, HIDREV, PRE_SI_PLATFORM, reg);
 
-		info->revision = NV_READ32(NV_ADDRESS_MAP_FUSE_BASE + FUSE_OPT_SUBREVISION_0);
+		info->revision = NV_READ32((uint32_t)NV_ADDRESS_MAP_FUSE_BASE + (uint32_t)FUSE_OPT_SUBREVISION_0);
 
 		reg = REG_READ(MISC, MISCREG_EMU_REVID);
 		info->emulation_rev = NV_DRF_VAL(MISCREG, EMU_REVID, BOARD, reg);

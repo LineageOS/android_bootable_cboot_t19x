@@ -15,6 +15,7 @@
 static struct qspi_soc_info qspi_info[] = {
 	{
 		.trig_len = 16U,
+		.dma_max_size = 8388608U,
 	}
 };
 

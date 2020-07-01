@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2018, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2017-2019, NVIDIA CORPORATION.  All rights reserved.
  *
  * NVIDIA CORPORATION and its licensors retain all intellectual property
  * and proprietary rights in and to this software, related documentation
@@ -40,20 +40,22 @@ tegrabl_error_t tegrabl_sdram_qual_engine_init(uint64_t phy_addr_start, uint64_t
 	uint32_t page_end;
 	uint32_t num_pages;
 	tegrabl_error_t err = TEGRABL_NO_ERROR;
+	bool is_fpga;
 
 	if ((MOD_LOG2(phy_addr_start, QUAL_PAGE_SIZE_SHIFT) != 0ULL) ||
 		(MOD_LOG2(size, QUAL_PAGE_SIZE_SHIFT) != 0ULL)) {
 		pr_warn("start address / size should be aligned to page size.\n");
 		err = TEGRABL_ERR_BAD_ADDRESS;
 	} else {
-		page_start = DIV_FLOOR_LOG2(phy_addr_start, QUAL_PAGE_SIZE_SHIFT);
-		num_pages = DIV_FLOOR_LOG2(size, QUAL_PAGE_SIZE_SHIFT);
+		page_start = (uint32_t)DIV_FLOOR_LOG2(phy_addr_start, QUAL_PAGE_SIZE_SHIFT);
+		num_pages = (uint32_t)DIV_FLOOR_LOG2(size, QUAL_PAGE_SIZE_SHIFT);
 		page_end = ((page_start + num_pages) - 1UL);
 
 		pr_trace("scrub: page_start = 0x%08x, page_end = 0x%08x\n",
 				page_start, page_end);
+		is_fpga = tegrabl_is_fpga();
 
-		err = tegrabl_qualengine_init_scrub(page_start, page_end, tegrabl_is_fpga() ? 1 : 0);
+		err = tegrabl_qualengine_init_scrub(page_start, page_end, is_fpga);
 		if (err != TEGRABL_NO_ERROR) {
 			pr_error("qual scrub failed\n");
 			err = TEGRABL_ERROR(TEGRABL_ERR_NOT_INITIALIZED, 0);

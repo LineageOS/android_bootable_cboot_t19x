@@ -11,8 +11,11 @@
 #ifndef BPMP_ABI_MACH_T194_CLOCK_H
 #define BPMP_ABI_MACH_T194_CLOCK_H
 
-/** @file */
-
+/**
+ * @file
+ * @defgroup bpmp_clock_ids Clock ID's
+ * @{
+ */
 /** @brief output of mux controlled by TEGRA194_CLK_SOC_ACTMON */
 #define TEGRA194_CLK_ACTMON			1
 /** @brief output of gate CLK_ENB_ADSP */
@@ -583,7 +586,7 @@
 #define TEGRA194_CLK_XUSB_SS_SUPERSPEED		277
 /** @brief HPLL for display hub clock */
 #define TEGRA194_CLK_PLLDISPHUB			278
-/** @brief Output of divider controlled by CLK_RST_CONTROLLER_CLK_SOURCE_NVDISPLAY_DISP */
+/** @brief Invalid (do not use) */
 #define TEGRA194_CLK_PLLDISPHUB_DIV		279
 /** @brief NAFLL clock source for CPU cluster 0 */
 #define TEGRA194_CLK_NAFLL_CLUSTER0		280
@@ -688,5 +691,9 @@
 #define TEGRA194_CLK_TSENSOR			330
 /** @brief CLK_RST_CONTROLLER_CLK_OUT_ENB_XUSB_0.CLK_ENB_XUSB gate */
 #define TEGRA194_CLK_XUSB_PADCTL		331
+/** @brief PLL controlled by CLK_RST_CONTROLLER_PLLBPMPCAM_BASE */
+#define TEGRA194_CLK_PLLBPMPCAM			332
+
+/** @} */
 
 #endif

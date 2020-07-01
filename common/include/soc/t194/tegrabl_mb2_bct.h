@@ -33,6 +33,8 @@ struct tegrabl_mb2_feature_fields {
 			uint64_t enable_rce:1;
 			uint64_t enable_ape:1;
 			uint64_t enable_combined_uart:1;
+			uint64_t enable_ccplex_lock_step:1;
+			uint64_t enable_emmc_send_cmd0_cmd1:1;
 		};
 	};
 	union {

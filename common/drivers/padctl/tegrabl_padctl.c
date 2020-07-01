@@ -12,6 +12,7 @@
 #include <tegrabl_io.h>
 #include <tegrabl_debug.h>
 #include <tegrabl_padctl.h>
+#include <tegrabl_ar_macro.h>
 #include <arpadctl_EDP.h>
 #include <address_map_new.h>
 

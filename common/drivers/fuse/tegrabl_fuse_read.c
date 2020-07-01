@@ -14,6 +14,7 @@
 #include <stdbool.h>
 #include <tegrabl_error.h>
 #include <tegrabl_addressmap.h>
+#include <tegrabl_ar_macro.h>
 #include <tegrabl_drf.h>
 #include <tegrabl_debug.h>
 #include <tegrabl_io.h>
@@ -22,6 +23,7 @@
 #include <arfuse.h>
 #include <arpmc_misc.h>
 #include <tegrabl_timer.h>
+#include <tegrabl_fuse_err_aux.h>
 
 /* Stores the base address of the fuse module */
 static uintptr_t fuse_base_address = NV_ADDRESS_MAP_FUSE_BASE;
@@ -30,9 +32,9 @@ static uintptr_t fuse_base_address = NV_ADDRESS_MAP_FUSE_BASE;
 #define NV_FUSE_READ(reg) NV_READ32((fuse_base_address + (uint32_t)(reg)))
 #define NV_FUSE_WRITE(reg, val) NV_WRITE32((fuse_base_address +    \
 														(uint32_t)(reg)), (val))
-#define PMC_MISC_READ(reg) NV_READ32((NV_ADDRESS_MAP_PMC_MISC_BASE + reg))
+#define PMC_MISC_READ(reg) NV_READ32(((uint32_t)NV_ADDRESS_MAP_PMC_MISC_BASE + (uint32_t)(reg)))
 #define PMC_MISC_WRITE(reg, val) \
-	NV_WRITE32((NV_ADDRESS_MAP_PMC_MISC_BASE + reg), val)
+	NV_WRITE32(((uint32_t)NV_ADDRESS_MAP_PMC_MISC_BASE + (uint32_t)(reg)), (val))
 
 #define PUBKEY_SIZE_BYTES 32U
 #define SBKKEY_SIZE_BYTES 16U
@@ -187,28 +189,7 @@ static bool tegrabl_fuse_apb2jtag_lock_status(void)
 	}
 }
 
-/**
- * @brief Read boot device from fuses
- *
- * @param reg_data the secondary boot device that  needs to be returned
- *
- * @return TEGRABL_NO_ERROR in case if able to read from fuse
- *	ERR_INVALID in case it needs to be read from straps
- */
-static tegrabl_error_t fuse_get_secondary_boot_device(uint32_t *reg_data)
-{
-	tegrabl_error_t err = TEGRABL_NO_ERROR;
-	uint32_t val;
 
-	if (tegrabl_fuse_ignore_dev_sel_straps()) {
-		val = NV_FUSE_READ(FUSE_RESERVED_SW_0);
-
-		*reg_data = (val & FUSE_RESERVED_BOOT_DEVICE_MASK);
-	} else {
-		err = TEGRABL_ERROR(TEGRABL_ERR_INVALID, 0);
-	}
-	return err;
-}
 
 bool fuse_is_odm_production_mode(void)
 {
@@ -219,6 +200,28 @@ bool fuse_is_odm_production_mode(void)
 	}
 }
 
+/**
+ * @brief Read boot device from fuses
+ *
+ * @return the secondary boot device
+ */
+static inline uint32_t fuse_get_secondary_boot_device(void)
+{
+	return (NV_FUSE_READ(FUSE_RESERVED_SW_0) & FUSE_RESERVED_BOOT_DEVICE_MASK);
+}
+
+uint32_t tegrabl_fuse_get_sku_info(void)
+{
+	uint32_t val;
+	bool original_visibility;
+
+	original_visibility = tegrabl_set_fuse_reg_visibility(true);
+	val = NV_FUSE_READ(FUSE_SKU_INFO_0) & ((uint32_t)FUSE_SKU_INFO_0_READ_MASK);
+	(void)tegrabl_set_fuse_reg_visibility(original_visibility);
+
+	return val;
+}
+
 uint32_t tegrabl_fuse_get_bootrom_patch_version(void)
 {
 	uint32_t val;
@@ -226,6 +229,18 @@ uint32_t tegrabl_fuse_get_bootrom_patch_version(void)
 
 	original_visibility = tegrabl_set_fuse_reg_visibility(true);
 	val =  NV_FUSE_READ(FUSE_BOOTROM_PATCH_VERSION_0) & 0xFFU;
+	(void)tegrabl_set_fuse_reg_visibility(original_visibility);
+
+	return val;
+}
+
+uint32_t tegrabl_fuse_get_ram_svop_pdp_svt(void)
+{
+	uint32_t val;
+	bool original_visibility;
+
+	original_visibility = tegrabl_set_fuse_reg_visibility(true);
+	val =  NV_FUSE_READ(FUSE_OPT_RAM_SVOP_PDP_SVT_0) & ((uint32_t)FUSE_OPT_RAM_SVOP_PDP_SVT_0_READ_MASK);
 	(void)tegrabl_set_fuse_reg_visibility(original_visibility);
 
 	return val;
@@ -378,8 +393,8 @@ static void fuse_get_enabled_cpu_cores(uint32_t *enabled_cores)
 											OPT_CCPLEX_L2S_DISABLE, reg,
 											disabled_l2s_mask);
 
-	pr_info("disabled_core_mask: 0x%08x\n", disabled_core_mask);
-	pr_info("disabled_l2s_mask: 0x%08x\n", disabled_l2s_mask);
+	pr_info("disabled %s: 0x%08x\n", "core mask", disabled_core_mask);
+	pr_info("disabled %s: 0x%08x\n", "l2s mask", disabled_l2s_mask);
 
 	/*
 	 * There are 4 clusters of "2 Carmel CPUs and a shared 2MB L2 cache"
@@ -412,8 +427,9 @@ tegrabl_error_t tegrabl_fuse_query_size(uint32_t type, uint32_t *size)
 	tegrabl_error_t ret = TEGRABL_NO_ERROR;
 
 	if (size == NULL) {
-		pr_debug("Empty buffer given to query size\n");
-		return TEGRABL_ERROR(TEGRABL_ERR_NO_MEMORY, 0);
+		ret = TEGRABL_ERROR(TEGRABL_ERR_BAD_PARAMETER, AUX_INFO_FUSE_QUERY_SIZE);
+		TEGRABL_SET_ERROR_STRING(ret, "size: %p", size);
+		return ret;
 	}
 
 	switch (type) {
@@ -430,7 +446,6 @@ tegrabl_error_t tegrabl_fuse_query_size(uint32_t type, uint32_t *size)
 	case FUSE_SOC_SPEEDO2:
 	case FUSE_SOC_IDDQ:
 	case FUSE_ENABLED_CPU_CORES:
-	case FUSE_APB2JTAG_DISABLE:
 	case FUSE_APB2JTAG_LOCK:
 	case FUSE_SATA_NV_CALIB:
 	case FUSE_SATA_MPHY_ODM_CALIB:
@@ -457,7 +472,6 @@ tegrabl_error_t tegrabl_fuse_query_size(uint32_t type, uint32_t *size)
 	case FUSE_RESERVED_SW:
 	case FUSE_BOOT_DEVICE_SELECT:
 	case FUSE_SKIP_DEV_SEL_STRAPS:
-	case FUSE_SECURE_PROVISION_INFO:
 	case FUSE_TYPE_PRODUCTION_MODE:
 	case FUSE_TYPE_SECURITY_MODE:
 	case FUSE_ODM_LOCK:
@@ -474,6 +488,13 @@ tegrabl_error_t tegrabl_fuse_query_size(uint32_t type, uint32_t *size)
 	case FUSE_CCPLEX_UCODE_MB1_FALCON_UCODE_FLD_RATCHET1:
 	case FUSE_CCPLEX_UCODE_MB1_FALCON_UCODE_FLD_RATCHET2:
 	case FUSE_CCPLEX_UCODE_MB1_FALCON_UCODE_FLD_RATCHET3:
+	case FUSE_FORCE_DEBUG_WITH_TEST_KEYS:
+	case FUSE_SECURE_IN_SYSTEM_BIST_CONTROL:
+	case FUSE_FLW2:
+	case FUSE_OPT_CUSTOMER_OPTIN_FUSE:
+	case FUSE_BOOT_DEVICE_INFO:
+	case FUSE_PRIVATE1:
+	case FUSE_PRIVATE2:
 		*size = sizeof(uint32_t);
 		break;
 	case FUSE_UID:
@@ -500,9 +521,9 @@ tegrabl_error_t tegrabl_fuse_query_size(uint32_t type, uint32_t *size)
 		*size = ODMID_SIZE_BYTES;
 		break;
 	default:
-		pr_error("Unknown fuse type size requested\n");
 		*size = 0;
-		ret = TEGRABL_ERROR(TEGRABL_ERR_NOT_FOUND, 0);
+		ret = TEGRABL_ERROR(TEGRABL_ERR_NOT_SUPPORTED, AUX_INFO_FUSE_QUERY_SIZE);
+		TEGRABL_SET_ERROR_STRING(ret, "fuse %u", type);
 		break;
 	}
 
@@ -598,35 +619,25 @@ tegrabl_error_t tegrabl_fuse_read(
 	tegrabl_error_t err = TEGRABL_NO_ERROR;
 	uint32_t reg_data = 0;
 	(void)tegrabl_set_fuse_reg_visibility(true);
-	if (buffer == NULL) {
-		pr_debug("Null pointer passed to read the fuse\n");
-		err = TEGRABL_ERROR(TEGRABL_ERR_INVALID, 0);
+	if ((buffer == NULL) || (size == 0U)) {
+		err = TEGRABL_ERROR(TEGRABL_ERR_BAD_PARAMETER, AUX_INFO_FUSE_READ);
+		TEGRABL_SET_ERROR_STRING(err, "size %u", size);
 		goto fail;
 	}
 
-	if (size > 0U) {
-		err = tegrabl_fuse_query_size(type, &temp_size);
-		if (err != TEGRABL_NO_ERROR) {
-			goto fail;
-		}
-		if (temp_size < size) {
-			pr_debug("wrong size supplied in argument\n");
-			err = TEGRABL_ERROR(TEGRABL_ERR_INVALID, 0);
-			goto fail;
-		}
-	} else {
-		pr_debug("Size to be read cannot be zero\n");
-		err = TEGRABL_ERROR(TEGRABL_ERR_INVALID, 0);
+	err = tegrabl_fuse_query_size(type, &temp_size);
+	if (err != TEGRABL_NO_ERROR) {
+		goto fail;
+	}
+	if (temp_size < size) {
+		err = TEGRABL_ERROR(TEGRABL_ERR_TOO_SMALL, AUX_INFO_FUSE_READ);
+		TEGRABL_SET_ERROR_STRING(err, "fuse size %u", "%u", temp_size, size);
 		goto fail;
 	}
 
 	switch (type) {
 	case FUSE_SEC_BOOTDEV:
-		err = fuse_get_secondary_boot_device(&reg_data);
-		if (err != TEGRABL_NO_ERROR) {
-			goto fail;
-		}
-		*buffer = reg_data;
+		*buffer = fuse_get_secondary_boot_device();
 		break;
 	case FUSE_TYPE_BOOT_SECURITY_INFO:
 		*buffer = fuse_get_boot_security_info();
@@ -777,8 +788,7 @@ tegrabl_error_t tegrabl_fuse_read(
 		*buffer = NV_FUSE_READ(FUSE_RESERVED_ODM11_0);
 		break;
 	case FUSE_RESERVED_SW:
-		*buffer = (NV_FUSE_READ(FUSE_RESERVED_SW_0) >>
-				FUSE_RESERVED_SW_SHIFT) & FUSE_RESERVED_SW_MASK;
+		*buffer = NV_FUSE_READ(FUSE_RESERVED_SW_0);
 		break;
 	case FUSE_BOOT_DEVICE_SELECT:
 		*buffer = (NV_FUSE_READ(FUSE_RESERVED_SW_0) >>
@@ -829,14 +839,29 @@ tegrabl_error_t tegrabl_fuse_read(
 	case FUSE_CV_DISABLE:
 		*buffer = NV_FUSE_READ(FUSE_OPT_CV_DISABLE_0);
 		break;
+	case FUSE_FORCE_DEBUG_WITH_TEST_KEYS:
+		*buffer = NV_FUSE_READ(FUSE_FORCE_DEBUG_WITH_TEST_KEYS_0);
+		break;
+	case FUSE_SECURE_IN_SYSTEM_BIST_CONTROL:
+		*buffer = NV_FUSE_READ(FUSE_OPT_SECURE_IN_SYSTEM_BIST_CONTROL_0);
+		break;
+	case FUSE_FLW2:
+		*buffer = NV_FUSE_READ(FUSE_FLW2_0);
+		break;
+	case FUSE_OPT_CUSTOMER_OPTIN_FUSE:
+		*buffer = NV_FUSE_READ(FUSE_OPT_CUSTOMER_OPTIN_FUSE_0);
+		break;
+	case FUSE_BOOT_DEVICE_INFO:
+		*buffer = NV_FUSE_READ(FUSE_BOOT_DEVICE_INFO_0);
+		break;
 	default:
-		pr_debug("Unkown fuse type read requested\n");
-		err = TEGRABL_ERROR(TEGRABL_ERR_NOT_FOUND, 0);
+		err = TEGRABL_ERROR(TEGRABL_ERR_NOT_SUPPORTED, AUX_INFO_FUSE_READ);
+		TEGRABL_SET_ERROR_STRING(err, "fuse %u", type);
 		break;
 	}
 fail:
 	if (err != TEGRABL_NO_ERROR) {
-		pr_error("Error = %d in tegrabl_fuse_read\n", err);
+		TEGRABL_PRINT_ERROR_STRING(TEGRABL_ERR_READ_FAILED, "fuse type %u\n", type);
 	}
 	return err;
 }
@@ -848,7 +873,6 @@ tegrabl_error_t tegrabl_fuse_check_ecid(union tegrabl_ecid *p_ecid)
 
 	err = tegrabl_fuse_read(FUSE_UID, uid, 16);
 	if (err != TEGRABL_NO_ERROR) {
-		pr_error("ERROR 0x%x: FUSE_UID read failed\n", err);
 		goto fail;
 	}
 
@@ -856,8 +880,8 @@ tegrabl_error_t tegrabl_fuse_check_ecid(union tegrabl_ecid *p_ecid)
 		(uid[1] == p_ecid->ecid.ecid_1) &&
 		(uid[2] == p_ecid->ecid.ecid_2) &&
 		(uid[3] == p_ecid->ecid.ecid_3))) {
-		pr_error("Error: ECID of check failed!!\n");
-		err = TEGRABL_ERROR(TEGRABL_ERR_INVALID, 0);
+		err = TEGRABL_ERROR(TEGRABL_ERR_VERIFY_FAILED, AUX_INFO_FUSE_CHECK_ECID);
+		TEGRABL_SET_ERROR_STRING(err, "ECID");
 		goto fail;
 	}
 

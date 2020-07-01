@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2017-2018, NVIDIA CORPORATION.  All rights reserved.
  *
  * NVIDIA CORPORATION and its licensors retain all intellectual property
  * and proprietary rights in and to this software, related documentation
@@ -11,6 +11,7 @@
 #include <tegrabl_comb_uart.h>
 #include <tegrabl_comb_uart_soc_local.h>
 #include <tegrabl_addressmap.h>
+#include <tegrabl_ar_macro.h>
 #include <arhsp_shrd_mbox.h>
 
 static struct comb_uart_mailbox mailbox[] = {

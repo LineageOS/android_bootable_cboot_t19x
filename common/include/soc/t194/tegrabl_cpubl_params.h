@@ -19,6 +19,7 @@ extern "C"
 #include <tegrabl_compiler.h>
 #include <tegrabl_boot_type.h>
 #include <tegrabl_storage_device_params.h>
+#include <tegrabl_rollback_protection.h>
 
 #define TBOOT_CPUBL_PARAMS_VERSION 0
 #define TEGRABL_MAX_VERSION_STRING 128 /* chars including null */
@@ -96,6 +97,7 @@ struct tboot_cpubl_params {
 					uint64_t enable_sce:1;
 					uint64_t switch_bootchain:1;
 					uint64_t reset_to_recovery:1;
+					uint64_t enable_rce:1;
 				};
 			}, 8);
 
@@ -160,6 +162,9 @@ struct tboot_cpubl_params {
 
 			/**< Storage devices to be used */
 			TEGRABL_DECLARE_ALIGNED(struct tegrabl_device storage_devices[TEGRABL_MAX_STORAGE_DEVICES], 8);
+
+			/**< Minimum ratchet version of oem-fw bins */
+			TEGRABL_DECLARE_ALIGNED(uint8_t min_ratchet[MAX_OEM_FW_RATCHET_INDEX], 8);
 		};
 	};
 }

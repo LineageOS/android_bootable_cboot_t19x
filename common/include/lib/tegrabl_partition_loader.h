@@ -23,6 +23,20 @@ struct tegrabl_binary_info {
 };
 
 /**
+ * @brief Provide name of a partition.
+ *
+ * @param bin_type Type of binary whose name is to be provided
+ * @param binary_copy primary or recovery copy which needs to be read
+ * @param partition_name buffer to hold the name of the partition
+ *
+ * @return TEGRABL_NO_ERROR if partition name was found, otherwise an appropriate
+ *                 error value.
+ */
+tegrabl_error_t tegrabl_get_partition_name(tegrabl_binary_type_t bin_type,
+                                                tegrabl_binary_copy_t binary_copy,
+                                                char *partition_name);
+
+/**
  * @brief Read specified binary from storage into memory.
  *
  * @param bin_type Type of binary to be loaded

@@ -11,11 +11,6 @@
 #define MODULE TEGRABL_ERR_BRBIT
 #define NVBOOT_TARGET_FPGA 0
 
-/* This is a WAR to fix compilation error due to nvcommon.h which is included
- * by nvboot_bct.h from core/include, tracked in bug http://nvbugs/200145270
- */
-#define __linux__ 1
-
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>

@@ -11,6 +11,7 @@
 #include <address_map_new.h>
 #include <tegrabl_utils.h>
 #include <tegrabl_gpio_local.h>
+#include <tegrabl_ar_macro.h>
 #include <argpio_sw.h>
 #include <argpio_aon_sw.h>
 

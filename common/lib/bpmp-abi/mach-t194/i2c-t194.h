@@ -11,6 +11,19 @@
 #ifndef BPMP_ABI_MACH_T194_I2C_T194_H
 #define BPMP_ABI_MACH_T194_I2C_T194_H
 
+/**
+ * @file
+ * @defgroup bpmp_i2c_defines I2C Defines
+ * @{
+ *   @defgroup bpmp_i2c_fw_defines I2C Firewall Defines
+ *   @defgroup bpmp_i2c_ids I2C controller ID's
+ * @}
+ */
+
+/**
+ * @addtogroup bpmp_i2c_fw_defines
+ * @{
+ */
 #define I2C_FW_NOMATCH 0
 #define I2C_FW_ALLOW 1
 #define I2C_FW_DENY 2
@@ -18,7 +31,12 @@
 #define I2C_FW_IS 1
 #define I2C_FW_IS_NOT 2
 #define I2C_FW_CONDITION_OFF 3
+/** @} */
 
+/**
+ * @addtogroup bpmp_i2c_ids
+ * @{
+ */
 #define TEGRA194_I2C1 1
 #define TEGRA194_I2C2 2
 #define TEGRA194_I2C3 3
@@ -30,5 +48,6 @@
 #define TEGRA194_I2C9 9
 #define TEGRA194_I2C10 10
 #define TEGRA194_I2C_MAX 11
+/** @} */
 
 #endif

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2018-2019, NVIDIA CORPORATION.  All rights reserved.
  *
  * NVIDIA CORPORATION and its licensors retain all intellectual property
  * and proprietary rights in and to this software, related documentation
@@ -144,6 +144,7 @@ tegrabl_error_t tegrabl_device_prod_configure(tegrabl_module_t module, uint8_t i
 			while ((prod_names_list[names_list_idx + 1UL] != '$') && (names_list_idx < len_prod_names)) {
 				names_list_idx++;
 			}
+			names_list_idx++;
 			name_idx = 0UL;
 			prod_id++;
 		}

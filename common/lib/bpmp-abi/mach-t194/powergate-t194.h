@@ -11,6 +11,19 @@
 #ifndef BPMP_ABI_MACH_T194_POWERGATE_T194_H
 #define BPMP_ABI_MACH_T194_POWERGATE_T194_H
 
+/**
+ * @file
+ * @defgroup bpmp_pdomain_ids Power Domain ID's
+ * This is a list of power domain IDs provided by the firmware.
+ * @note Following partitions are forcefully powered down upon entering SC7 power state.
+ *  - TEGRA194_POWER_DOMAIN_PVAA
+ *  - TEGRA194_POWER_DOMAIN_PVAB
+ *  - TEGRA194_POWER_DOMAIN_DLAA
+ *  - TEGRA194_POWER_DOMAIN_DLAB
+ *  - TEGRA194_POWER_DOMAIN_CV
+ *  - TEGRA194_POWER_DOMAIN_GPU
+ * @{
+ */
 #define TEGRA194_POWER_DOMAIN_AUD	1
 #define TEGRA194_POWER_DOMAIN_DISP	2
 #define TEGRA194_POWER_DOMAIN_DISPB	3
@@ -39,5 +52,6 @@
 #define TEGRA194_POWER_DOMAIN_CV	26
 #define TEGRA194_POWER_DOMAIN_GPU	27
 #define TEGRA194_POWER_DOMAIN_MAX	27
+/** @} */
 
 #endif

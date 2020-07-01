@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2018, NVIDIA Corporation.  All rights reserved.
+ * Copyright (c) 2015-2019, NVIDIA Corporation.  All rights reserved.
  *
  * NVIDIA Corporation and its licensors retain all intellectual property
  * and proprietary rights in and to this software, related documentation
@@ -101,7 +101,7 @@ tegrabl_error_t tegrabl_enable_mem_clk(
 tegrabl_error_t tegrabl_enable_qspi_clk(void *priv_data, uint8_t instance);
 #endif
 
-tegrabl_error_t tegrabl_assert_mem_rst(bool assert);
+tegrabl_error_t tegrabl_assert_mem_rst(bool assert_err);
 
 tegrabl_error_t tegrabl_init_pllm(NvBootSdramParams *pdata);
 
@@ -109,6 +109,8 @@ tegrabl_error_t tegrabl_clk_init_pllc4(void);
 tegrabl_error_t tegrabl_clk_init_pllc3(void);
 tegrabl_error_t tegrabl_clk_init_pllc2(void);
 tegrabl_error_t tegrabl_clk_init_pllc(void);
+
+tegrabl_error_t tegrabl_clk_disable_pllc(void);
 
 tegrabl_error_t tegrabl_init_pllaon(void);
 
@@ -123,6 +125,9 @@ tegrabl_error_t tegrabl_clk_start_pll(
 		uint32_t div_m_val,
 		uint32_t div_n_val,
 		uint32_t div_p_val,
+		uint32_t emc_training_sparse1,
+		uint32_t emc_training_sparse2,
+		uint32_t emc_training_sparse3,
 		uint32_t val_misc1,
 		uint32_t val_misc2,
 		uint64_t *stable_time);

@@ -13,24 +13,15 @@
 
 /*                     ________________________________________
  *
- *                       Memory map of SDRAM usage by nvtboot
+ *                       Memory map of SDRAM usage
  *                     ________________________________________
  *
  * [Address]                                                          [Size]
- * Carveouts start from MIN(0xFFFF_FFFF, DRAM_END) and grow downwards
  *             ____________________________________________________
- *      ^      |                                                  |
- *      |      |                   MTS Carveout                   |  <- 128 MB
- *      |      |__________________________________________________|
- *     This    |                                                  |
- *   portion   |                  GSC Carveouts                   |  <- 128 MB
- *    is not   |__________________________________________________|
- *  visible to |                                                  |
- *      OS     |                 SecureOS carveout                |  <- 6 MB
- *      |      |__________________________________________________|
- *      |      |                                                  |
- *      |      |                 BPMP-FW carveout                 |  <- 1 MB
- *      V      |__________________________________________________|
+ *             |                                                  |
+ *             |                                                  |
+ *             |                                                  |
+ *             |                                                  |
  *             |                                                  |
  *             |                                                  |
  *             |                                                  |
@@ -38,11 +29,15 @@
  *             |                                                  |
  *             |                                                  |
  *             |                                                  |
+ *             |                                                  |
+ *             |                                                  |
+ *             |                                                  |
+ *             |                                                  |
  *     ...     |__________________________________________________|
  *             |                                                  |
  *             |                     ^         ^                  |
  *             |                     |   Heap  |  Boot.img        |
- *             |                     |         |  NCT             |  <- 128 MB
+ *             |                     |         |  NCT             | [carveout.cpubl.size] from MB1-BCT
  *             |    CPU-BL carveout  |         V                  |
  *             |                     |   Cboot                    |
  *             |                     V                            |
@@ -52,7 +47,7 @@
  *             |                     |                            |
  *             |                     |    Ramdisk                 |
  *             |                     |                            |
- *             |        OS carveout  |    DTB                     |  <- 512 MB
+ *             |        OS carveout  |    DTB                     | [carveout.os.size] from MB1-BCT
  *             |                     |                            |
  *             |                     |    Kernel                  |
  *             |                     |                            |
@@ -61,6 +56,7 @@
  * of Mem
  * (0x80000000)
  */
+
 
 #define EKS_MAXIMUM_CODE_SIZE	(20 * 1024)
 
