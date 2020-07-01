@@ -19,7 +19,7 @@ GLOBAL_INCLUDES += \
     $(LOCAL_DIR)/../../../../../common/include/drivers \
     $(LOCAL_DIR)/../../../../../common/include/soc/$(TARGET) \
     $(LOCAL_DIR)/../../../../../$(TARGET_FAMILY)/common/include/soc/$(TARGET) \
-	$(LOCAL_DIR)/../../../../../../../core/include
+    $(LOCAL_DIR)/../../../../../../../hardware/nvidia/hwinc/core
 
 ifneq ($(filter t19x, $(TARGET_FAMILY)),)
 ALLMODULE_OBJS += $(LOCAL_DIR)/prebuilt/qual_engine_priv.o
