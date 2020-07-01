@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2018-2019, NVIDIA CORPORATION.  All rights reserved.
  *
  * NVIDIA CORPORATION and its licensors retain all intellectual property
  * and proprietary rights in and to this software, related documentation
@@ -39,7 +39,7 @@ void tegrabl_padctl_config_to_gpio(uint32_t pin_num)
 	 * GPIO(M,2) = 98 -> dp_aux_ch0_hpd_pm2
 	 * GPIO(M,3) = 99 -> dp_aux_ch0_hpd_pm3
 	 */
-	if ((pin_num - 96) > (sizeof(pad_dp_aux) - 1)) {
+	if ((pin_num - 96) > (ARRAY_SIZE(pad_dp_aux) - 1)) {
 		pr_warn("%s: array size of pad_dp_aux exceeded\n", __func__);
 		return;
 	}

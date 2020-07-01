@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2018, NVIDIA Corporation.  All rights reserved.
+ * Copyright (c) 2016-2019, NVIDIA Corporation.  All rights reserved.
  *
  * NVIDIA Corporation and its licensors retain all intellectual property
  * and proprietary rights in and to this software and related documentation
@@ -68,11 +68,22 @@
 #define TYPE_GPH                47UL
 #define TYPE_GUEST_IMG          48UL
 #define TYPE_RAMDISK_IMG        49UL
+#if defined(CONFIG_ENABLE_L4T_RECOVERY)
+#define TYPE_RECOVERY_IMG       50UL
+#define TYPE_RECOVERY_DTB       51UL
+#define TYPE_KERNEL_BOOTCTRL    52UL
+#define TYPE_PARTITIONTABLE_LEVEL2 53UL
+
+#define TYPE_INVALID            54UL
+#define TYPE_BLACKLIST_INFO_1   55UL
+#define TYPE_MAX                56UL
+#else
 #define TYPE_PARTITIONTABLE_LEVEL2 50UL
 
 #define TYPE_INVALID            51UL
 #define TYPE_BLACKLIST_INFO_1   52UL
 #define TYPE_MAX                53UL
+#endif
 
 /**
  * @brief Defines various binaries which can be
@@ -175,6 +186,12 @@
 #define TEGRABL_BINARY_GUEST_IMG TYPE_GUEST_IMG
 #define TEGRABL_BINARY_RAMDISK TYPE_RAMDISK_IMG
 
+#if defined(CONFIG_ENABLE_L4T_RECOVERY)
+#define TEGRABL_BINARY_RECOVERY_IMG TYPE_RECOVERY_IMG
+#define TEGRABL_BINARY_RECOVERY_DTB TYPE_RECOVERY_DTB
+#define TEGRABL_BINARY_KERNEL_BOOTCTRL TYPE_KERNEL_BOOTCTRL
+#endif
+
 	/* Level 2 partition table */
 #define TEGRABL_BINARY_PARTITIONTABLE_LEVEL2 TYPE_PARTITIONTABLE_LEVEL2
 	/* Invalid */
@@ -271,6 +288,12 @@ typedef uint32_t tegrabl_binary_type_t;
 #define TEGRABL_IMGTYPE_GPH TYPE_GPH
 #define TEGRABL_IMGTYPE_GUEST_IMG TYPE_GUEST_IMG
 #define TEGRABL_IMGTYPE_RAMDISK TYPE_RAMDISK_IMG
+
+#if defined(CONFIG_ENABLE_L4T_RECOVERY)
+#define TEGRABL_IMGTYPE_RECOVERY_IMG TYPE_RECOVERY_IMG
+#define TEGRABL_IMGTYPE_RECOVERY_DTB TYPE_RECOVERY_DTB
+#define TEGRABL_IMGTYPE_KERNEL_BOOTCTRL TYPE_KERNEL_BOOTCTRL
+#endif
 
 	/* Level 2 partition table */
 #define TEGRABL_IMGTYPE_PARTITIONTABLE_LEVEL2 TYPE_PARTITIONTABLE_LEVEL2

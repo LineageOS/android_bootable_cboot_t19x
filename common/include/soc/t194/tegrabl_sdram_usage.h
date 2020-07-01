@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2018, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2015-2020, NVIDIA CORPORATION.  All rights reserved.
  *
  * NVIDIA CORPORATION and its licensors retain all intellectual property
  * and proprietary rights in and to this software, related documentation
@@ -60,8 +60,10 @@
 
 #define EKS_MAXIMUM_CODE_SIZE	(20 * 1024)
 
-#define BOOT_IMAGE_MAX_SIZE		0x04000000U		/* 64 MB */
 #define BOOT_IMAGE_ALIGNMENT	0x00010000U		/* 64 KB */
+#define BOOT_IMAGE_MAX_SIZE		0x05000000U		/* 80 MB */
+#define BOOT_IMAGE				"boot.img"
+
 #define NCT_MAX_SIZE			0x00200000U
 
 #define RAMDISK_ALIGNMENT		0x01000000U
@@ -69,6 +71,7 @@
 
 #define DTB_ALIGNMENT			0x01000000U
 #define DTB_MAX_SIZE			0x00400000U
+#define KERNEL_DTB				"jetson.dtb"
 
 #define KERNEL_ALIGNMENT		0x00200000U
 #define MAX_KERNEL_IMAGE_SIZE	0x10000000U

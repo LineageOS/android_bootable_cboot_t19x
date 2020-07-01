@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, NVIDIA Corporation.  All rights reserved.
+ * Copyright (c) 2018-2019, NVIDIA Corporation.  All rights reserved.
  *
  * NVIDIA Corporation and its licensors retain all intellectual property and
  * proprietary rights in and to this software and related documentation.  Any
@@ -10,13 +10,13 @@
 
 #define MODULE TEGRABL_ERR_AUTH
 
+#if defined(CONFIG_ENABLE_SECURE_BOOT)
+
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>
 #include <tegrabl_utils.h>
 #include <tegrabl_debug.h>
-
-#if defined(CONFIG_OS_IS_L4T)
 #include <tegrabl_addressmap.h>
 #include <tegrabl_drf.h>
 #include <tegrabl_io.h>
@@ -64,12 +64,12 @@
 static tegrabl_error_t authenticate_oem_header(void *payload)
 {
 	tegrabl_error_t err = TEGRABL_NO_ERROR;
-#if defined(CONFIG_ENABLE_SECURE_BOOT)
 	uint32_t val;
 	uint32_t authentication_scheme;
 	uint8_t *hash = NULL;
 	uint8_t temp_mem[sizeof(NvBootComponentHeader)];
 	uint8_t temp_pcp[sizeof(NvBootPublicCryptoParameters)];
+	NvBootPublicCryptoParameters *pcp;
 
 	NvBootComponentHeader *header = (NvBootComponentHeader *)payload;
 
@@ -85,8 +85,7 @@ static tegrabl_error_t authenticate_oem_header(void *payload)
 
 	memcpy(temp_pcp, (uint8_t *)&header->Pcp,
 			sizeof(NvBootPublicCryptoParameters));
-	NvBootPublicCryptoParameters *pcp =
-			(NvBootPublicCryptoParameters *)temp_pcp;
+	pcp = (NvBootPublicCryptoParameters *)temp_pcp;
 
 	val = REG_READ(FUSE, FUSE_BOOT_SECURITY_INFO);
 	authentication_scheme = val & FUSE_AUTHENTICATION_SCHEME_MASK;
@@ -164,16 +163,12 @@ fail:
 		tegrabl_dealloc(TEGRABL_HEAP_DMA, hash);
 	}
 
-#else /* !defined(CONFIG_ENABLE_SECURE_BOOT) */
-	TEGRABL_UNUSED(payload);
-#endif
 	return err;
 }
 
 static tegrabl_error_t authenticate_oem_payload(void *payload)
 {
 	tegrabl_error_t err = TEGRABL_NO_ERROR;
-#if defined(CONFIG_ENABLE_SECURE_BOOT)
 	uint8_t *hash = NULL;
 
 	NvBootComponentHeader *header = (NvBootComponentHeader *)payload;
@@ -230,9 +225,6 @@ fail:
 		tegrabl_dealloc(TEGRABL_HEAP_DMA, hash);
 	}
 
-#else /* !defined(CONFIG_ENABLE_SECURE_BOOT) */
-	TEGRABL_UNUSED(payload);
-#endif
 	return err;
 }
 
@@ -244,9 +236,7 @@ tegrabl_error_t tegrabl_auth_payload(tegrabl_binary_type_t bin_type,
 	pr_info("T19x: Authenticate %s (bin_type: %u), max size 0x%x\n", name,
 			bin_type, max_size);
 
-#if defined(CONFIG_ENABLE_SECURE_BOOT)
     tegrabl_crypto_early_init();
-#endif
 
 	/* Authenticate OEM signed portion of header */
 	err = authenticate_oem_header(payload);
@@ -269,10 +259,15 @@ tegrabl_error_t tegrabl_auth_payload(tegrabl_binary_type_t bin_type,
 	 * !!! test show it does not work if simply setting
 	 * binary->load_address += sizeof(NvBootComponentHeader);
 	 */
-	memcpy((uint8_t *)payload,
+	memmove((uint8_t *)payload,
 			(uint8_t *)payload + sizeof(NvBootComponentHeader),
 			(uint32_t)max_size - sizeof(NvBootComponentHeader));
 fail:
 	return err;
 }
-#endif /* defined(CONFIG_OS_IS_L4T) */
+
+uint32_t tegrabl_sigheader_size(void)
+{
+	return CRYPTO_HEADER_SIZE;
+}
+#endif /* defined(CONFIG_ENABLE_SECURE_BOOT) */

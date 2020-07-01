@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2018-2019, NVIDIA CORPORATION.  All rights reserved.
  *
  * NVIDIA CORPORATION and its licensors retain all intellectual property
  * and proprietary rights in and to this software, related documentation
@@ -14,6 +14,7 @@
 #include <tegrabl_ar_macro.h>
 #include <argpio_sw.h>
 #include <argpio_aon_sw.h>
+#include <tegrabl_io.h>
 
 /* main controllor addr base list */
 static const uint32_t tegra_gpio_main_bases[] = {
@@ -49,7 +50,7 @@ static const uint32_t tegra_gpio_main_bases[] = {
 
 struct tegrabl_gpio_id tegra_gpio_id_main = {
 	.devname = "gpio-main",
-	.base_addr = NV_ADDRESS_MAP_GPIO_CTL0_BASE,
+	.base_addr = NV_ADDRESS_MAP_GPIO_CTL_BASE,
 	.bank_count = ARRAY_SIZE(tegra_gpio_main_bases),
 	.bank_bases = tegra_gpio_main_bases,
 };
@@ -69,3 +70,30 @@ struct tegrabl_gpio_id tegra_gpio_id_aon = {
 	.bank_count = ARRAY_SIZE(tegra_gpio_aon_bases),
 	.bank_bases = tegra_gpio_aon_bases,
 };
+
+static const struct tegrabl_pingroup tegra19x_groups[] = {
+	{"usb_vbus_en0_pz1", 201, 0xd0b0},
+	{"usb_vbus_en0_pz2", 202, 0xd0b8},
+};
+
+#define padctl_readl(reg) \
+	NV_READ32(NV_ADDRESS_MAP_PADCTL_A0_BASE + reg)
+
+#define padctl_writel(reg, value) \
+	NV_WRITE32(NV_ADDRESS_MAP_PADCTL_A0_BASE + reg, value)
+
+void tegrabl_pinconfig_set(uint32_t pin_num, uint32_t pinconfig)
+{
+	uint32_t val, pingroup_list_item;
+	uint32_t pingroup_count = ARRAY_SIZE(tegra19x_groups);
+
+	if (pingroup_count) {
+		for (pingroup_list_item = 0; pingroup_list_item < pingroup_count; pingroup_list_item++) {
+			if (pin_num == tegra19x_groups[pingroup_list_item].pin) {
+				val = padctl_readl(tegra19x_groups[pingroup_list_item].reg_offset);
+				val &= pinconfig;
+				padctl_writel(tegra19x_groups[pingroup_list_item].reg_offset, val);
+			}
+		}
+	}
+}

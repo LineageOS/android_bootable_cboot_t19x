@@ -1751,7 +1751,7 @@ static tegrabl_error_t internal_tegrabl_clk_pll_hw_sequencer_state(
 										bool state)
 {
 	tegrabl_error_t error = TEGRABL_NO_ERROR;
-	uint32_t bpmp_clk_id;
+	uint32_t bpmp_clk_id = MODULE_NOT_SUPPORTED;
 
 	switch (pll_id) {
 	case TEGRABL_CLK_PLL_ID_UTMI_PLL:

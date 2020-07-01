@@ -625,43 +625,38 @@ fail:
 	return status;
 }
 
-static tegrabl_error_t get_addr_cells(void *fdt, int nodeoffset, uint32_t *cells)
+static int get_addr_cells(void *fdt, int nodeoffset, uint32_t *cells)
 {
 	const uint32_t *prop;
 
 	prop = fdt_getprop(fdt, nodeoffset, "#address-cells", NULL);
 	if (prop != NULL) {
 		*cells = fdt32_to_cpu(*(uint32_t *)prop);
-		return TEGRABL_NO_ERROR;
-	} else {
-		return TEGRABL_ERROR(TEGRABL_ERR_NOT_FOUND, 0);
+		return 0;
 	}
+
+	return -FDT_ERR_NOTFOUND;
 }
 
-#define MAX_T194_CPUS 8
-#define MAX_T194_CLUSTERS	4
+#define MAX_T194_CPUS U32(8)
+#define MAX_T194_CLUSTERS	U32(4)
 static tegrabl_error_t update_cpu_floorsweeping_config(void *fdt, int nodeoffset)
 {
-	uint32_t cpu;
+	uint32_t cpu = 0;
 	uint32_t cluster;
-	uint32_t mpidr;
-	int offset;
+	int offset, prev = 0;
 	int cpu_map_offset;
-	int dterr;
-	uint64_t tmp64;
-	uint32_t tmp32;
-	char cpu_node_str[] = "cpu@16"; /* dummy string for max-size */
 	char cluster_node_str[] = "cluster10";
-	bool node_present;
 	uint32_t num_cores = tegrabl_ccplex_nvg_num_cores();
 	uint32_t addr_cells;
-	tegrabl_error_t err;
+	int err;
 
 	err = get_addr_cells(fdt, nodeoffset, &addr_cells);
-	if (err != TEGRABL_NO_ERROR) {
+	if (err < 0) {
 		pr_error("Couldn't find #address-cells for /cpus\n");
-		return err;
+		return TEGRABL_ERROR(TEGRABL_ERR_NOT_FOUND, 0);
 	}
+
 	if (addr_cells != 1 && addr_cells != 2) {
 		pr_error("Invalid value '%d' for /cpus #address-cells\n", addr_cells);
 		return TEGRABL_ERROR(TEGRABL_ERR_INVALID, 0);
@@ -669,71 +664,99 @@ static tegrabl_error_t update_cpu_floorsweeping_config(void *fdt, int nodeoffset
 
 	/* Update the correct MPIDR and enable the DT nodes of each enabled CPU;
 	 * disable the DT nodes of the floorswept cores.*/
-	offset = nodeoffset;
-	for (cpu = 0; cpu < MAX_T194_CPUS; cpu++) {
-		tegrabl_snprintf(cpu_node_str, 8, "cpu@%u", cpu);
-		offset = fdt_subnode_offset(fdt, nodeoffset, cpu_node_str);
-		node_present = (offset >= 0);
+	for (offset = fdt_first_subnode(fdt, nodeoffset);
+	     offset > 0;
+	     offset = fdt_next_subnode(fdt, offset)) {
+		/* enough to accomodate "cpu@0000000000000000\0" */
+		char name[4 + 16 + 1];
+		const void *prop;
+		int len;
+
+		/* skip non-CPU nodes */
+		prop = fdt_getprop(fdt, offset, "device_type", &len);
+		if (!prop || strcmp(prop, "cpu") != 0)
+			continue;
 
 		if (cpu < num_cores) {
-			if (!node_present) {
-				pr_error("Couldn't find /cpu/%s\n", cpu_node_str);
-				return TEGRABL_ERROR(TEGRABL_ERR_NOT_FOUND, 0);
-			}
+			uint32_t value[2], *ptr = value, mpidr;
+
 			mpidr = tegrabl_ccplex_nvg_logical_to_mpidr(cpu);
 			mpidr &= 0x00ffffffUL;
 
-			if (addr_cells == 2) {
-				tmp64 = cpu_to_fdt64((uint64_t)mpidr);
-				dterr = fdt_setprop(fdt, offset, "reg", &tmp64, sizeof(tmp64));
-			} else {
-				tmp32 = cpu_to_fdt32((uint32_t)mpidr);
-				dterr = fdt_setprop(fdt, offset, "reg", &tmp32, sizeof(tmp32));
-			}
-			if (dterr < 0) {
-				pr_error("Failed to add MPIDR to /cpus/%s/reg: %s\n", cpu_node_str, fdt_strerror(dterr));
-				return TEGRABL_ERROR(TEGRABL_ERR_ADD_FAILED, 0);
+			tegrabl_snprintf(name, sizeof(name), "cpu@%x", mpidr);
+
+			err = fdt_set_name(fdt, offset, name);
+			if (err < 0) {
+				pr_error("failed to set name for /cpus/%s: %s\n",
+					 name, fdt_strerror(err));
 			}
 
-			dterr = fdt_setprop_string(fdt, offset, "status", "okay");
-			if (dterr < 0) {
-				pr_error("Failed to enable /cpus/%s node: %s\n", cpu_node_str, fdt_strerror(dterr));
-				return TEGRABL_ERROR(TEGRABL_ERR_ADD_FAILED, 0);
-			}
+			if (addr_cells > 1)
+				*ptr++ = cpu_to_fdt32(U64_TO_U32_HI(mpidr));
 
-			pr_info("Enabled cpu-%u (mpidr: 0x%x) node in FDT\n", cpu, mpidr);
+			*ptr++ = cpu_to_fdt32(U64_TO_U32_LO(mpidr));
+
+			len = (ptr - value) * sizeof(*ptr);
+
+			err = fdt_setprop_inplace(fdt, offset, "reg", value, len);
+			if (err < 0)
+				pr_error("failed to write MPIDR to /cpus/%s: %s\n",
+					 name, fdt_strerror(err));
 		} else {
-			if (node_present) {
-				dterr = fdt_del_node(fdt, offset);
-				if (dterr < 0) {
-					pr_error("Failed to delete /cpus/%s node: %s\n", cpu_node_str, fdt_strerror(dterr));
-					return TEGRABL_ERROR(TEGRABL_ERR_DEL_FAILED, 0);
-				}
+			const char *node = fdt_get_name(fdt, offset, &len);
 
-				pr_info("Deleted cpu-%u node in FDT\n", cpu);
+			strncpy(name, node, sizeof(name));
+
+			err = fdt_del_node(fdt, offset);
+			if (err < 0)
+				pr_error("failed to delete /cpus/%s: %s\n",
+					 name, fdt_strerror(err));
+			else {
+				pr_info("Deleted %s node in DT\n", name);
+
+				/*
+				 * Deleting a node is a destructive operation,
+				 * which means that offsets will get messed up
+				 * and the iteration in the loop will fail.
+				 *
+				 * Correct for that by rewinding to the last
+				 * known subnode offset. Note that this won't
+				 * work if what we deleted was the first sub-
+				 * node. There's no good way to rewind in that
+				 * case because it would break the for-loop.
+				 *
+				 * However, we should never really get into
+				 * that situation because the last CPUs are
+				 * always the ones that get floorswept.
+				 */
+				if (prev > 0)
+					offset = prev;
 			}
 		}
+
+		/*
+		 * Keep a reference to the last subnode in case we need to
+		 * delete a node and rewind.
+		 */
+		prev = offset;
+		cpu++;
 	}
 
-	cpu_map_offset = -1;
 	cpu_map_offset = fdt_subnode_offset(fdt, nodeoffset, "cpu-map");
-
 	if (cpu_map_offset < 0) {
 		pr_error("/cpus/cpu-map does not exist\n");
-		return TEGRABL_ERROR(TEGRABL_ERR_NOT_FOUND, 0);
+		return TEGRABL_NO_ERROR;
 	}
 
 	for (cluster = 0; cluster < MAX_T194_CLUSTERS; cluster++) {
 		tegrabl_snprintf(cluster_node_str, 9, "cluster%u", cluster);
 		offset = fdt_subnode_offset(fdt, cpu_map_offset, cluster_node_str);
 
-		node_present = (offset >= 0);
-
-		if (node_present && (cluster * 2 >= num_cores)) {
-			dterr = fdt_del_node(fdt, offset);
-			if (dterr < 0) {
+		if ((offset >= 0) && (cluster * 2 >= num_cores)) {
+			err = fdt_del_node(fdt, offset);
+			if (err < 0) {
 				pr_error("Failed to delete /cpus/cpu-map/%s node: %s\n",
-							cluster_node_str, fdt_strerror(dterr));
+					 cluster_node_str, fdt_strerror(err));
 				return TEGRABL_ERROR(TEGRABL_ERR_DEL_FAILED, 0);
 			}
 
@@ -742,6 +765,93 @@ static tegrabl_error_t update_cpu_floorsweeping_config(void *fdt, int nodeoffset
 	}
 
 	return TEGRABL_NO_ERROR;
+}
+
+static tegrabl_error_t update_armpmu_prop(void *fdt,
+										  int nodeoffset,
+										  uint32_t num_cores,
+										  const char *prop_name,
+										  uint32_t num_prop)
+{
+	const uint32_t *temp = NULL;
+	uint32_t i, k;
+	int dterr;
+	uint32_t *buffer = NULL;
+	size_t sz_buffer = 0;
+	tegrabl_error_t ret_code = TEGRABL_NO_ERROR;
+
+	temp = fdt_getprop(fdt, nodeoffset, prop_name, NULL);
+	if (temp == NULL) {
+		pr_error("Couldn't find property: %s\n", prop_name);
+		ret_code = TEGRABL_ERROR(TEGRABL_ERR_NOT_FOUND, 0);
+		goto out;
+	}
+
+	sz_buffer = sizeof(uint32_t) * num_cores * num_prop;
+	buffer = (uint32_t *)tegrabl_malloc(sz_buffer);
+	if (buffer == NULL) {
+		pr_error("%d: Failed to allocate memory\n", __LINE__);
+		ret_code = TEGRABL_ERROR(TEGRABL_ERR_NO_MEMORY, 0);
+		goto out;
+	}
+
+	for (i = 0; i < num_cores; ++i) {
+		for (k = 0; k < num_prop; ++k) {
+			buffer[(i * num_prop) + k] = *(temp + (i * num_prop) + k);
+		}
+	}
+
+	dterr = fdt_setprop(fdt, nodeoffset, prop_name, buffer, sz_buffer);
+	if (dterr < 0) {
+		pr_error("Failed to update %s property\n", prop_name);
+		ret_code = TEGRABL_ERROR(TEGRABL_ERR_ADD_FAILED, 0);
+		goto out_free;
+	}
+
+	pr_info("- update property: %s\n", prop_name);
+
+out_free:
+	tegrabl_free(buffer);
+out:
+	return ret_code;
+}
+
+#define INTERRUPT_PROP_SIZE	U32(3)
+static tegrabl_error_t update_armpmu_floorsweeping_config(void *fdt, int nodeoffset)
+{
+	tegrabl_error_t err_code = TEGRABL_NO_ERROR;
+	uint32_t num_cores = tegrabl_ccplex_nvg_num_cores();
+
+	/*
+	 * Modify arm-pmu DT node to ensure element count of properties:
+	 * interrupts, interrupt-affinity are equal to number of CPUs.
+	 */
+	if (num_cores == MAX_T194_CPUS) {
+		goto out;
+	}
+
+	pr_info("Update arm-pmu in FDT\n");
+
+	/* Update property: interrupts */
+	err_code = update_armpmu_prop(fdt, nodeoffset, num_cores, "interrupts", INTERRUPT_PROP_SIZE);
+	if (err_code != TEGRABL_NO_ERROR) {
+		if (TEGRABL_ERROR_REASON(err_code) == TEGRABL_ERR_NOT_FOUND)
+			err_code = TEGRABL_NO_ERROR;
+
+		goto out;
+	}
+
+	/* Update property: interrupt-affinity */
+	err_code = update_armpmu_prop(fdt, nodeoffset, num_cores, "interrupt-affinity", U32(1));
+	if (err_code != TEGRABL_NO_ERROR) {
+		if (TEGRABL_ERROR_REASON(err_code) == TEGRABL_ERR_NOT_FOUND)
+			err_code = TEGRABL_NO_ERROR;
+
+		goto out;
+	}
+
+out:
+	return err_code;
 }
 
 static tegrabl_error_t update_vpr_info(void *fdt, int nodeoffset)
@@ -903,6 +1013,7 @@ storage:
 static struct tegrabl_linuxboot_dtnode_info extra_nodes[] = {
 	{ "chosen", add_reset_info},
 	{ "cpus" , update_cpu_floorsweeping_config },
+	{ "arm-pmu", update_armpmu_floorsweeping_config },
 	{ "reserved-memory", update_vpr_info },
 	{ "reserved-memory", update_cv_gos_info },
 	{ "chosen", add_device_info },
@@ -1426,6 +1537,13 @@ uint64_t tegrabl_get_ramdisk_load_addr(void)
 
 	return ramdisk_load_addr;
 }
+
+#if defined(CONFIG_ENABLE_L4T_RECOVERY)
+tegrabl_error_t tegrabl_get_recovery_img_load_addr(void **load_addr)
+{
+	return tegrabl_get_boot_img_load_addr(load_addr);
+}
+#endif
 
 bool tegrabl_do_ratchet_check(uint8_t bin_type, void * const addr)
 {

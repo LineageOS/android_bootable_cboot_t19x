@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2018, NVIDIA Corporation.  All Rights Reserved.
+ * Copyright (c) 2015-2019, NVIDIA Corporation.  All Rights Reserved.
  *
  * NVIDIA Corporation and its licensors retain all intellectual property and
  * proprietary rights in and to this software and related documentation.  Any
@@ -250,6 +250,7 @@ bool tegrabl_rst_is_l0_l1a(void)
 				ret = true;
 				break;
 			}
+			break;
 		default:
 			ret = false;
 			break;

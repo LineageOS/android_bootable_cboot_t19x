@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2018, NVIDIA Corporation.  All Rights Reserved.
+ * Copyright (c) 2016-2020, NVIDIA Corporation.  All Rights Reserved.
  *
  * NVIDIA CORPORATION and its licensors retain all intellectual property
  * and proprietary rights in and to this software, related documentation
@@ -37,7 +37,12 @@
 #if defined(CONFIG_ENABLE_USB_MS)
 #include <tegrabl_usbh.h>
 #include <tegrabl_usbmsd_bdev.h>
+#include <tegrabl_usbmsd.h>
 #endif
+#include <tegrabl_board_info.h>
+#include <tegrabl_malloc.h>
+#include <stdlib.h>
+#include <string.h>
 
 #if defined(CONFIG_ENABLE_UFS)
 static void set_safe_ufs_params(struct tegrabl_ufs_platform_params *ufs)
@@ -98,6 +103,77 @@ static void set_safe_sata_params(struct tegrabl_sata_platform_params *sata)
 	sata->is_skip_init = false;
 }
 #endif
+
+struct tegrabl_device_info {
+	tegrabl_storage_type_t device_type;
+        uint8_t instance;
+};
+
+/* Rey/XNX device/instance SKU mapping table */
+static const struct tegrabl_device_info dev_cfg_info[] = {
+	{ TEGRABL_STORAGE_SDCARD,	0 },
+	{ TEGRABL_STORAGE_SDMMC_USER,	3 }
+};
+
+/* Correct device_type/instance on XNX using board ID SKU */
+static tegrabl_storage_type_t correct_device_and_instance(tegrabl_storage_type_t device_type,
+							  uint8_t *instance)
+{
+	TEGRABL_UNUSED(instance);
+#if defined(CONFIG_OS_IS_L4T)
+	tegrabl_error_t err = TEGRABL_NO_ERROR;
+	struct board_id_info *id_info;
+	char cvm[5], sku[5];
+	uint8_t sku_num;
+
+	pr_debug("%s: entry DEVICE_TYPE = %d\n", __func__, device_type);
+	/* 1. get board ID SKU (00 (SD) or 01 (eMMC) */
+	id_info = tegrabl_malloc(sizeof(struct board_id_info));
+	if (id_info == NULL) {
+		pr_error("Failed to allocate memory for board-id info!\n");
+		err = TEGRABL_ERROR(TEGRABL_ERR_NO_MEMORY, 0);
+		/* Just return device_type unchanged, hope for the best */
+		goto done;
+	}
+
+	err = tegrabl_get_board_ids(id_info);
+	if (err != TEGRABL_NO_ERROR) {
+		pr_error("Failed to get board id info!\n");
+		/* Just return device_type unchanged, hope for the best */
+		goto done;
+	}
+
+	pr_debug("board-id 0 = %s\n", (char *)id_info->part[0].part_no);
+
+	/* SKU is in 2nd part of board-id 0.part_no, i.e. '3668-000x-' */
+	strncpy(cvm, (char *)id_info->part[0].part_no, 4);
+	strncpy(sku, (char *)id_info->part[0].part_no+5, 4);
+	pr_debug("Board = %s, SKU = %s\n", cvm, sku);
+	/* Only Rey boards at this time */
+	if ((strncmp(cvm, "3668", 4) != 0))
+		goto done;
+
+	sku_num = atoi(sku);
+	if (sku_num >= ARRAY_SIZE(dev_cfg_info)) {
+		pr_error("Invalid SKU: %d!\n", sku_num);
+		err = TEGRABL_ERROR(TEGRABL_ERR_INVALID, 0);
+		goto done;
+	}
+
+	if (dev_cfg_info[sku_num].device_type != device_type) {
+		/* device_type from image doesn't match SKU device_type */
+		pr_debug("SKU %d: image device_type = %d, SKU device_type = %d!\n",
+			 sku_num, device_type, dev_cfg_info[sku_num].device_type);
+		device_type = dev_cfg_info[sku_num].device_type;
+		*instance = dev_cfg_info[sku_num].instance;
+	}
+done:
+	pr_debug("%s: final DEVICE_TYPE = %d, INSTANCE = %d\n", __func__,
+		 device_type, (uint8_t)*instance);
+#endif	/* CONFIG_OS_IS_L4T */
+
+	return device_type;
+}
 
 tegrabl_error_t init_storage_device(struct tegrabl_device_config_params *device_config,
 							tegrabl_storage_type_t device_type,
@@ -255,8 +331,6 @@ tegrabl_error_t init_storage_device(struct tegrabl_device_config_params *device_
 		break;
 #endif
 #if defined(CONFIG_ENABLE_USB_MS)
-tegrabl_error_t tegrabl_usbmsd_bdev_open(uint32_t instance);
-
 	case TEGRABL_STORAGE_USB_MS:
 		pr_debug("Calling tegrabl_usbh_init ..\n");
 		err = tegrabl_usbh_init();
@@ -313,7 +387,9 @@ tegrabl_error_t config_storage(struct tegrabl_device_config_params *device_confi
 		[TEGRABL_BOOT_DEV_SATA] = TEGRABL_STORAGE_SATA,
 		[TEGRABL_BOOT_DEV_UFS] = TEGRABL_STORAGE_UFS,
 		[TEGRABL_BOOT_DEV_UFS_USER] = TEGRABL_STORAGE_UFS_USER,
+		[TEGRABL_BOOT_DEV_SDCARD] = TEGRABL_STORAGE_SDCARD,
 	};
+	uint8_t instance;
 
 	TEGRABL_UNUSED(device_config);
 
@@ -348,14 +424,19 @@ tegrabl_error_t config_storage(struct tegrabl_device_config_params *device_confi
 		}
 
 		device = mb1_bct_to_blockdev_type[devices[i].type];
+
 		/* Skip re-initializing boot device */
 		if ((device == boot_device) && (devices[i].instance == boot_dev_instance)) {
 			continue;
 		}
 
-		err = init_storage_device(device_config, device, devices[i].instance);
+		/* Correct device_type/instance  on XNX using board ID SKU */
+		instance = devices[i].instance;
+		device = correct_device_and_instance(device, &instance);
+
+		err = init_storage_device(device_config, device, instance);
 		if (err != TEGRABL_NO_ERROR) {
-			pr_error("Failed to initialize device %d-%d\n", devices[i].type, devices[i].instance);
+			pr_error("Failed to initialize device %d-%d\n", device, instance);
 			goto fail;
 		}
 	}

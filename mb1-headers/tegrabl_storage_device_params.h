@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2018, NVIDIA Corporation.  All Rights Reserved.
+ * Copyright (c) 2017-2019, NVIDIA CORPORATION. All rights reserved.
  *
  * NVIDIA Corporation and its licensors retain all intellectual property and
  * proprietary rights in and to this software and related documentation.  Any
@@ -34,7 +34,8 @@
 #define TEGRABL_BOOT_DEV_SATA                 5U
 #define TEGRABL_BOOT_DEV_UFS                  6U
 #define TEGRABL_BOOT_DEV_UFS_USER             7U
-#define TEGRABL_BOOT_DEV_MAX                  8U
+#define TEGRABL_BOOT_DEV_SDCARD               8U
+#define TEGRABL_BOOT_DEV_MAX                  9U
 #define TEGRABL_BOOT_DEV_BOOT_DEVICE_SIZE     0x7fffffffU
 
 
