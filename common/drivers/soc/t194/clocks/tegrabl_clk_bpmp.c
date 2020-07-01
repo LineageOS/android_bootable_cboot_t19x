@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2018, NVIDIA Corporation.  All rights reserved.
+ * Copyright (c) 2017-2019, NVIDIA Corporation.  All rights reserved.
  *
  * NVIDIA Corporation and its licensors retain all intellectual property
  * and proprietary rights in and to this software, related documentation
@@ -1641,38 +1641,10 @@ fail:
 	return err;
 }
 
-#define USB_HOST_CLK_ELEMENTS 2
 tegrabl_error_t tegrabl_usb_host_clock_init(void)
 {
-	uint32_t dummy;
-	uint8_t index;
-	tegrabl_error_t err = TEGRABL_NO_ERROR;
-
-	uint32_t usbf_clk[USB_HOST_CLK_ELEMENTS][3] = {
-		/* clk_id, src, rate */
-		{TEGRA194_CLK_XUSB_CORE_HOST, TEGRA194_CLK_PLLP_OUT0, 102000},
-		{TEGRA194_CLK_XUSB_FALCON, TEGRA194_CLK_PLLP_OUT0, 102000},
-	};
-
-	/* Array index for above (usbf_clk) */
-	const uint8_t clk_id = 0;
-	const uint8_t src_id = 1;
-	const uint8_t rate = 2;
-
-	pr_trace("Programming XUSB host clks\n");
-	for (index = 0UL; index < (uint8_t)USB_HOST_CLK_ELEMENTS; index++) {
-		err = internal_tegrabl_car_set_clk_src(usbf_clk[index][clk_id], usbf_clk[index][src_id]);
-		if ((err != TEGRABL_NO_ERROR) && (err != TEGRABL_ERR_NOT_SUPPORTED)) {
-			goto fail;
-		}
-		err = internal_tegrabl_car_set_clk_rate(usbf_clk[index][clk_id], usbf_clk[index][rate], &dummy);
-		if ((err != TEGRABL_NO_ERROR) && (err != TEGRABL_ERR_NOT_SUPPORTED)) {
-			goto fail;
-		}
-	}
-
-fail:
-	return err;
+	/* bpmp-fw takes care of clock initialization */
+	return TEGRABL_NO_ERROR;
 }
 
 #if defined(CONFIG_ENABLE_QSPI)

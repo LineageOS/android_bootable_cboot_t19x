@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2018, NVIDIA Corporation.  All Rights Reserved.
+ * Copyright (c) 2015-2019, NVIDIA Corporation.  All Rights Reserved.
  *
  * NVIDIA Corporation and its licensors retain all intellectual property and
  * proprietary rights in and to this software and related documentation.  Any
@@ -639,15 +639,19 @@ static tegrabl_error_t get_addr_cells(void *fdt, int nodeoffset, uint32_t *cells
 }
 
 #define MAX_T194_CPUS 8
+#define MAX_T194_CLUSTERS	4
 static tegrabl_error_t update_cpu_floorsweeping_config(void *fdt, int nodeoffset)
 {
 	uint32_t cpu;
+	uint32_t cluster;
 	uint32_t mpidr;
 	int offset;
+	int cpu_map_offset;
 	int dterr;
 	uint64_t tmp64;
 	uint32_t tmp32;
 	char cpu_node_str[] = "cpu@16"; /* dummy string for max-size */
+	char cluster_node_str[] = "cluster10";
 	bool node_present;
 	uint32_t num_cores = tegrabl_ccplex_nvg_num_cores();
 	uint32_t addr_cells;
@@ -700,14 +704,40 @@ static tegrabl_error_t update_cpu_floorsweeping_config(void *fdt, int nodeoffset
 			pr_info("Enabled cpu-%u (mpidr: 0x%x) node in FDT\n", cpu, mpidr);
 		} else {
 			if (node_present) {
-				dterr = fdt_setprop_string(fdt, offset, "status", "disabled");
+				dterr = fdt_del_node(fdt, offset);
 				if (dterr < 0) {
-					pr_error("Failed to disable /cpus/%s node: %s\n", cpu_node_str, fdt_strerror(dterr));
-					return TEGRABL_ERROR(TEGRABL_ERR_ADD_FAILED, 0);
+					pr_error("Failed to delete /cpus/%s node: %s\n", cpu_node_str, fdt_strerror(dterr));
+					return TEGRABL_ERROR(TEGRABL_ERR_DEL_FAILED, 0);
 				}
 
-				pr_info("Disabled cpu-%u node in FDT\n", cpu);
+				pr_info("Deleted cpu-%u node in FDT\n", cpu);
 			}
+		}
+	}
+
+	cpu_map_offset = -1;
+	cpu_map_offset = fdt_subnode_offset(fdt, nodeoffset, "cpu-map");
+
+	if (cpu_map_offset < 0) {
+		pr_error("/cpus/cpu-map does not exist\n");
+		return TEGRABL_ERROR(TEGRABL_ERR_NOT_FOUND, 0);
+	}
+
+	for (cluster = 0; cluster < MAX_T194_CLUSTERS; cluster++) {
+		tegrabl_snprintf(cluster_node_str, 9, "cluster%u", cluster);
+		offset = fdt_subnode_offset(fdt, cpu_map_offset, cluster_node_str);
+
+		node_present = (offset >= 0);
+
+		if (node_present && (cluster * 2 >= num_cores)) {
+			dterr = fdt_del_node(fdt, offset);
+			if (dterr < 0) {
+				pr_error("Failed to delete /cpus/cpu-map/%s node: %s\n",
+							cluster_node_str, fdt_strerror(dterr));
+				return TEGRABL_ERROR(TEGRABL_ERR_DEL_FAILED, 0);
+			}
+
+			pr_info("Deleted cluster%u node in FDT\n", cluster);
 		}
 	}
 
