@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2018, NVIDIA Corporation.  All Rights Reserved.
+ * Copyright (c) 2015-2021, NVIDIA Corporation.  All Rights Reserved.
  *
  * NVIDIA Corporation and its licensors retain all intellectual property and
  * proprietary rights in and to this software and related documentation.  Any
@@ -171,6 +171,9 @@ struct tboot_cpubl_params {
 
 			/**< Bit-vector representing which of the GSCs get used for encrypting OS managed memory */
 			TEGRABL_DECLARE_ALIGNED(uint32_t os_mem_encryption_gsc_list, 8);
+
+			/** Blob size in rcm mode */
+			TEGRABL_DECLARE_ALIGNED(uint32_t blob_size, 8);
 		};
 	};
 }

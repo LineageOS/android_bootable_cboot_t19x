@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020, NVIDIA Corporation.  All rights reserved.
+ * Copyright (c) 2018-2021, NVIDIA Corporation.  All rights reserved.
  *
  * NVIDIA Corporation and its licensors retain all intellectual property and
  * proprietary rights in and to this software and related documentation.  Any
@@ -225,6 +225,8 @@ static tegrabl_error_t authenticate_oem_payload(void *payload)
 	uint8_t *src;
 	uint32_t total_len, len;
 	uint32_t chunk = 0x800000;
+	uint8_t iv[SE_AES_BLOCK_LENGTH];
+	uint8_t next_iv[SE_AES_BLOCK_LENGTH];
 
 	NvBootComponentHeader *header = (NvBootComponentHeader *)payload;
 
@@ -269,17 +271,21 @@ static tegrabl_error_t authenticate_oem_payload(void *payload)
 
 	/* Decrypt the binary */
 	pr_info("%s: Decrypt the binary\n", __func__);
+	memcpy(iv, header->Salt2, SE_AES_BLOCK_LENGTH);
 	src = (uint8_t *)header + sizeof(*header);
 	total_len = header->Stage2Components[0].BinaryLen;
 	while (total_len) {
 		len = (total_len > chunk) ? chunk : total_len;
+		/* save the next IV */
+		memcpy(next_iv, (src + len - SE_AES_BLOCK_LENGTH), SE_AES_BLOCK_LENGTH);
 		err = tegrabl_crypto_decrypt_buffer(src, len, src,
 							AES_KEYSLOT_SBK, SBK_KEY_SIZE_BYTES,
-							header->Salt2);
+							iv);
 		if (err != TEGRABL_NO_ERROR) {
 			pr_error("Binary decryption failed\n");
 			goto fail;
 		}
+		memcpy(iv, next_iv, SE_AES_BLOCK_LENGTH);
 		src += len;
 		total_len -= len;
 	}

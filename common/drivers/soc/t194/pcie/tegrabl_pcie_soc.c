@@ -411,7 +411,8 @@ tegrabl_error_t tegrabl_power_on_phy(uint8_t ctrl_num)
 
 	if (!is_available) {
 		pr_info("%s: controller %u not available\n", __func__, ctrl_num);
-		goto exit;
+		err = TEGRABL_ERR_NOT_SUPPORTED;
+		goto fail;
 	}
 
 	/* find "phys" property in this node */
@@ -478,7 +479,6 @@ tegrabl_error_t tegrabl_power_on_phy(uint8_t ctrl_num)
 		--n_phys;
 	}
 
-exit:
 fail:
 	return err;
 }
@@ -598,8 +598,11 @@ tegrabl_error_t tegrabl_pcie_soc_init(uint8_t ctrl_num, uint8_t link_speed)
 
 	/* power on phys */
 	pr_info("poweron phys\n");
-	/* ignore error returned from tegrabl_power_on_phy(), treat it as no phy specified in DT. */
-	tegrabl_power_on_phy(ctrl_num);
+	error = tegrabl_power_on_phy(ctrl_num);
+	if (error != TEGRABL_NO_ERROR) {
+		pr_error("Failed to power on phy on controller-%d\n", ctrl_num);
+		goto fail;
+	}
 
 	/** Deassert PEX CORE RST */
 	error = tegrabl_car_rst_clear(TEGRABL_MODULE_PCIE_CORE, ctrl_num);

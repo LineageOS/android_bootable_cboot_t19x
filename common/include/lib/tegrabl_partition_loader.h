@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2018, NVIDIA Corporation.  All Rights Reserved.
+ * Copyright (c) 2015-2021, NVIDIA Corporation.  All Rights Reserved.
  *
  * NVIDIA Corporation and its licensors retain all intellectual property and
  * proprietary rights in and to this software and related documentation.  Any
@@ -85,7 +85,8 @@ tegrabl_error_t tegrabl_load_binary_bdev(tegrabl_binary_type_t bin_type, void **
  * in recovery for flashing or rcm boot.
  *
  * @param blob New location of blob.
+ * @param size Size of the \b blob
  */
-void tegrabl_loader_set_blob_address(void *blob);
+void tegrabl_loader_set_blob_header_and_size(void *blob, uint32_t size);
 
 #endif /* INCLUDED_TEGRABL_PARTITION_LOADER_H */

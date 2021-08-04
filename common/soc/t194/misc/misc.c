@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2019, NVIDIA Corporation.  All Rights Reserved.
+ * Copyright (c) 2015-2021, NVIDIA Corporation.  All Rights Reserved.
  *
  * NVIDIA Corporation and its licensors retain all intellectual property and
  * proprietary rights in and to this software and related documentation.  Any
@@ -540,7 +540,7 @@ bool tegrabl_is_scratch_dram_dbe_flag_set(void)
 
 uint32_t tegrabl_get_bad_dram_page_number(void)
 {
-	return SCRATCH_READ(SECURE_RSV74_SCRATCH_1);
+	return SCRATCH_READ(SCRATCH_22);
 }
 
 bool tegrabl_is_fpga(void)
@@ -683,6 +683,16 @@ void tegrabl_set_boot_slot_reg(uint32_t slot_info)
 uint32_t tegrabl_get_boot_slot_reg(void)
 {
 	return SCRATCH_READ(SCRATCH_15);
+}
+
+void tegrabl_set_rootfs_slot_reg(uint32_t slot_info)
+{
+	SCRATCH_WRITE(SCRATCH_16, slot_info);
+}
+
+uint32_t tegrabl_get_rootfs_slot_reg(void)
+{
+	return SCRATCH_READ(SCRATCH_16);
 }
 
 #define FUSE_ECID_MAX_SIZE 4UL /* in Bytes */

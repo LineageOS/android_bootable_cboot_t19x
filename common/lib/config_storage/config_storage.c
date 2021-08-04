@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2020, NVIDIA Corporation.  All Rights Reserved.
+ * Copyright (c) 2016-2021, NVIDIA Corporation.  All Rights Reserved.
  *
  * NVIDIA CORPORATION and its licensors retain all intellectual property
  * and proprietary rights in and to this software, related documentation
@@ -395,6 +395,7 @@ tegrabl_error_t config_storage(struct tegrabl_device_config_params *device_confi
 	uint32_t boot_dev_instance;
 	uint32_t i = 0;
 	static tegrabl_storage_type_t mb1_bct_to_blockdev_type[TEGRABL_BOOT_DEV_MAX] = {
+		[TEGRABL_BOOT_DEV_NONE] = TEGRABL_STORAGE_INVALID,
 		[TEGRABL_BOOT_DEV_SDMMC_BOOT] = TEGRABL_STORAGE_SDMMC_BOOT,
 		[TEGRABL_BOOT_DEV_SDMMC_USER] = TEGRABL_STORAGE_SDMMC_USER,
 		[TEGRABL_BOOT_DEV_SDMMC_RPMB] = TEGRABL_STORAGE_SDMMC_RPMB,
@@ -404,7 +405,14 @@ tegrabl_error_t config_storage(struct tegrabl_device_config_params *device_confi
 		[TEGRABL_BOOT_DEV_UFS_USER] = TEGRABL_STORAGE_UFS_USER,
 		[TEGRABL_BOOT_DEV_SDCARD] = TEGRABL_STORAGE_SDCARD,
 	};
-	uint8_t instance;
+	uint8_t instance = 0;
+#if defined(CONFIG_OS_IS_L4T)
+	bool is_storage_list = false;
+	static uint8_t storage_to_boot_dev_type[TEGRABL_STORAGE_MAX] = {
+		[TEGRABL_STORAGE_SDMMC_USER] = TEGRABL_BOOT_DEV_SDMMC_USER,
+		[TEGRABL_STORAGE_SDCARD] = TEGRABL_BOOT_DEV_SDCARD,
+	};
+#endif
 
 	TEGRABL_UNUSED(device_config);
 
@@ -430,6 +438,21 @@ tegrabl_error_t config_storage(struct tegrabl_device_config_params *device_confi
 	}
 
 	for (i = 0; i < TEGRABL_MAX_STORAGE_DEVICES; i++) {
+#if defined(CONFIG_OS_IS_L4T)
+		/* Either SDCARD or SDMMC_USER is device list */
+		if (devices[i].type == TEGRABL_BOOT_DEV_SDCARD ||
+			devices[i].type == TEGRABL_BOOT_DEV_SDMMC_USER) {
+			is_storage_list = true;
+		}
+
+		if ((devices[i].type == TEGRABL_BOOT_DEV_NONE) && is_storage_list) {
+			break;
+		}
+
+		if ((devices[i].type >= TEGRABL_BOOT_DEV_MAX) && is_storage_list) {
+			continue;
+		}
+#else
 		if (devices[i].type == TEGRABL_BOOT_DEV_NONE) {
 			break;
 		}
@@ -437,6 +460,7 @@ tegrabl_error_t config_storage(struct tegrabl_device_config_params *device_confi
 		if (devices[i].type >= TEGRABL_BOOT_DEV_MAX) {
 			continue;
 		}
+#endif
 
 		device = mb1_bct_to_blockdev_type[devices[i].type];
 
@@ -448,6 +472,17 @@ tegrabl_error_t config_storage(struct tegrabl_device_config_params *device_confi
 		/* Correct device_type/instance  on XNX using board ID SKU */
 		instance = devices[i].instance;
 		device = correct_device_and_instance(device, &instance);
+#if defined(CONFIG_OS_IS_L4T)
+		if (devices[i].type == TEGRABL_BOOT_DEV_NONE) {
+			if (device >= TEGRABL_STORAGE_MAX) {
+				break;
+			}
+			/* Add the corrected device to the devices list */
+			devices[i].instance = instance;
+			devices[i].type = storage_to_boot_dev_type[device];
+			is_storage_list = true;
+		}
+#endif
 
 		err = init_storage_device(device_config, device, instance);
 		if (err != TEGRABL_NO_ERROR) {

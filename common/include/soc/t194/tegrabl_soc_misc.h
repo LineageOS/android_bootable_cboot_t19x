@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2018, NVIDIA Corporation.  All Rights Reserved.
+ * Copyright (c) 2015-2021, NVIDIA Corporation.  All Rights Reserved.
  *
  * NVIDIA Corporation and its licensors retain all intellectual property and
  * proprietary rights in and to this software and related documentation.  Any
@@ -362,6 +362,20 @@ void tegrabl_set_boot_slot_reg(uint32_t slot_info);
  * @return A/B slot register value
  */
 uint32_t tegrabl_get_boot_slot_reg(void);
+
+/**
+ * @brief Set A/B rootfs slot register
+ *
+ * @param slot_info to be set
+ */
+void tegrabl_set_rootfs_slot_reg(uint32_t slot_info);
+
+/**
+ * @brief get A/B rootfs slot register
+ *
+ * @return A/B slot register value
+ */
+uint32_t tegrabl_get_rootfs_slot_reg(void);
 
 /**
  * @brief get chip ecid string

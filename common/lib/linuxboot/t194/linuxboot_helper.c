@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2020, NVIDIA Corporation.  All Rights Reserved.
+ * Copyright (c) 2015-2021, NVIDIA Corporation.  All Rights Reserved.
  *
  * NVIDIA Corporation and its licensors retain all intellectual property and
  * proprietary rights in and to this software and related documentation.  Any
@@ -77,6 +77,7 @@ static uint64_t os_carveout_next_free_addr;
 static const uint32_t oem_fw_bin_type_mapping[TEGRABL_BINARY_MAX] = {
 	[TEGRABL_BINARY_KERNEL] = OEM_FW_RATCHET_IDX_KERNEL,
 	[TEGRABL_BINARY_KERNEL_DTB] = OEM_FW_RATCHET_IDX_KERNEL_DTB,
+	[TEGRABL_BINARY_XUSB] = OEM_FW_RATCHET_IDX_XUSB,
 };
 
 static int add_tegraid(char *cmdline, int len, char *param, void *priv)
@@ -689,11 +690,15 @@ static tegrabl_error_t update_cpu_floorsweeping_config(void *fdt, int nodeoffset
 				pr_error("failed to set name for /cpus/%s: %s\n",
 					 name, fdt_strerror(err));
 			}
-
+			/* As mpidr is currently a 32-bit value,
+			 * on a system with a "address-cells = 2" property,
+			 * i.e. a system with 64-bit reg property
+			 * the higher 32-bits of reg will always be zero.
+			 */
 			if (addr_cells > 1)
-				*ptr++ = cpu_to_fdt32(U64_TO_U32_HI(mpidr));
+				*ptr++ = 0;
 
-			*ptr++ = cpu_to_fdt32(U64_TO_U32_LO(mpidr));
+			*ptr++ = cpu_to_fdt32(mpidr);
 
 			len = (ptr - value) * sizeof(*ptr);
 
