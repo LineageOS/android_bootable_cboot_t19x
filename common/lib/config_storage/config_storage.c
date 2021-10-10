@@ -112,11 +112,13 @@ struct tegrabl_device_info {
         uint8_t instance;
 };
 
+#if defined(CONFIG_OS_IS_L4T)
 /* Rey/XNX device/instance SKU mapping table */
 static const struct tegrabl_device_info dev_cfg_info[] = {
 	{ TEGRABL_STORAGE_SDCARD,	0 },
 	{ TEGRABL_STORAGE_SDMMC_USER,	3 }
 };
+#endif
 
 /* Correct device_type/instance on XNX using board ID SKU */
 static tegrabl_storage_type_t correct_device_and_instance(tegrabl_storage_type_t device_type,
