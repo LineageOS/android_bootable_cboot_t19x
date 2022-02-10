@@ -45,6 +45,7 @@
 #include <tegrabl_vprinfo.h>
 #include <cboot_rollback_protection.h>
 #include <nvboot_boot_component.h>
+#include <tegrabl_partition_manager.h>
 
 #if defined(CONFIG_ENABLE_STAGED_SCRUBBING)
 #include <qual_engine.h>
@@ -474,6 +475,7 @@ bool is_system_as_root_enabled(void)
 	bool ret = true;
 	void *fdt;
 	int fw_node, fstab_node, sys_node;
+	struct tegrabl_partition part;
 
 	/* Check dtb to see if system as root is enabled */
 	err = tegrabl_dt_get_fdt_handle(TEGRABL_DT_BL, &fdt);
@@ -494,6 +496,12 @@ bool is_system_as_root_enabled(void)
 		ret = false;
 	}
 fail:
+	/* If a super partition exists, disable system as root */
+	if (tegrabl_partition_open("super", &part) == TEGRABL_NO_ERROR) {
+		tegrabl_partition_close(&part);
+		ret = false;
+	}
+
 	return ret;
 }
 
