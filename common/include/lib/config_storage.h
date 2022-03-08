@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, NVIDIA Corporation.  All Rights Reserved.
+ * Copyright (c) 2018-2021, NVIDIA Corporation.  All Rights Reserved.
  *
  * NVIDIA Corporation and its licensors retain all intellectual property and
  * proprietary rights in and to this software and related documentation.  Any
@@ -14,6 +14,25 @@
 #include <tegrabl_compiler.h>
 #include <tegrabl_storage_device_params.h>
 #include <tegrabl_blockdev.h>
+
+TEGRABL_PACKED(
+struct tegrabl_device_config_sdcard_params {
+	uint32_t magic_header;
+	uint8_t instance;
+	uint8_t cd_gpio;
+	uint8_t cd_gpio_polarity;
+	uint8_t en_vdd_sd_gpio;
+	uint8_t reserved[8];
+}
+);
+
+TEGRABL_PACKED(
+struct tegrabl_device_config_params_extended {
+	/* The first element has to be the original device_config to be extened */
+	struct tegrabl_device_config_params device_config;
+	struct tegrabl_device_config_sdcard_params sdcard;
+}
+);
 
 /**
  * @brief to get active boot device

@@ -190,6 +190,8 @@ tegrabl_error_t init_storage_device(struct tegrabl_device_config_params *device_
 	uint8_t flag = 0U;
 #if defined(CONFIG_ENABLE_SDCARD)
 	struct tegrabl_sd_platform_params sd_params;
+	struct tegrabl_device_config_params_extended *dev_config_ext;
+	struct tegrabl_device_config_sdcard_params *sdcard_dev_config;
 	uint32_t sd_instance = 0;
 	bool is_present = 0;
 #endif
@@ -317,20 +319,36 @@ tegrabl_error_t init_storage_device(struct tegrabl_device_config_params *device_
 
 #if defined(CONFIG_ENABLE_SDCARD)
 	case TEGRABL_STORAGE_SDCARD:
-		err = tegrabl_sd_get_platform_params(&sd_instance, &sd_params);
-		if (err != TEGRABL_NO_ERROR) {
-			pr_warn("Error: failed to get sd-card params\n");
+		device = "sdcard";
+		dev_config_ext = (struct tegrabl_device_config_params_extended *)device_config;
+		sdcard_dev_config = &dev_config_ext->sdcard;
+		if (sdcard_dev_config->magic_header == MAGIC_HEADER) {
+			sd_instance = sdcard_dev_config->instance;
+			sd_params.cd_gpio.pin = sdcard_dev_config->cd_gpio;
+			sd_params.cd_gpio.flags = sdcard_dev_config->cd_gpio_polarity;
+			sd_params.en_vdd_sd_gpio = sdcard_dev_config->en_vdd_sd_gpio;
+			sd_params.vmmc_supply = 0;
+			source = "mb1 bct";
 		} else {
-			err = sd_bdev_is_card_present(&sd_params.cd_gpio, &is_present);
+			err = tegrabl_sd_get_platform_params(&sd_instance, &sd_params);
 			if (err != TEGRABL_NO_ERROR) {
-				pr_warn("No SD-card present !!\n");
+				pr_warn("Ignoring error getting sd-card params\n");
 				/* NO_ERROR to attempt booting from other sources */
 				err = TEGRABL_NO_ERROR;
-			} else if (is_present) {
-				err = sd_bdev_open(sd_instance, &sd_params);
-				if (err != TEGRABL_NO_ERROR) {
-					pr_warn("Error opening sdcard-%d\n", sd_instance);
-				}
+				break;
+			}
+			source = "DT-BL";
+		}
+
+		err = sd_bdev_is_card_present(&sd_params.cd_gpio, &is_present);
+		if (err != TEGRABL_NO_ERROR) {
+			pr_warn("No SD-card present !!\n");
+			/* NO_ERROR to attempt booting from other sources */
+			err = TEGRABL_NO_ERROR;
+		} else if (is_present) {
+			err = sd_bdev_open(sd_instance, &sd_params);
+			if (err != TEGRABL_NO_ERROR) {
+				pr_warn("Error opening sdcard-%d\n", sd_instance);
 			}
 		}
 		break;

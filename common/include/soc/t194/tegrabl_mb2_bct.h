@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2018, NVIDIA Corporation. All Rights Reserved.
+ * Copyright (c) 2017-2021, NVIDIA Corporation. All Rights Reserved.
  *
  * NVIDIA Corporation and its licensors retain all intellectual property and
  * proprietary rights in and to this software and related documentation.  Any
@@ -35,6 +35,7 @@ struct tegrabl_mb2_feature_fields {
 			uint64_t enable_combined_uart:1;
 			uint64_t enable_ccplex_lock_step:1;
 			uint64_t enable_emmc_send_cmd0_cmd1:1;
+			uint64_t enable_rpmb_rollback:1;
 		};
 	};
 	union {
@@ -47,6 +48,16 @@ struct tegrabl_mb2_feature_fields {
 		uint64_t data4;
 	};
 };
+
+TEGRABL_PACKED(
+struct tegrabl_mb2bct_sdcard_params {
+        uint8_t instance;
+        uint8_t cd_gpio;
+        uint8_t cd_gpio_polarity;
+        uint8_t en_vdd_sd_gpio;
+        uint8_t reserved[4];
+}
+);
 
 TEGRABL_PACKED(
 struct tegrabl_mb2_bct {
@@ -87,8 +98,11 @@ struct tegrabl_mb2_bct {
 	/* Bit-vector representing which of the GSCs get used for encrypting OS managed memory */
 	uint32_t os_mem_encryption_gsc_list;
 
+	/* for sd_params */
+	struct tegrabl_mb2bct_sdcard_params sd_params;
+
 	/* Ensure that the total size of structure is 1024 bytes */
-	uint8_t reserved[MB2_BCT_SIZE - 120];
+	uint8_t reserved[MB2_BCT_SIZE - 128];
 }
 );
 

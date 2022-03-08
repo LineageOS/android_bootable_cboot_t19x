@@ -1673,7 +1673,7 @@ bool tegrabl_do_ratchet_check(uint8_t bin_type, void * const addr)
 		fw_ratchet_level = bch_addr->Stage2Components[i].Version.RatchetLevel;
 		pr_trace("%u: min ratchet level: %u, fw ratchet level: %u\n", i, min_ratchet_level, fw_ratchet_level);
 		if ((min_ratchet_level != 0) && (min_ratchet_level > fw_ratchet_level)) {
-			pr_error("Binary (%u), ratchet version mismatch, expected (>%u), current (%u)\n",
+			pr_error("Binary (%u), ratchet version mismatch, expected (>=%u), current (%u)\n",
 					 bin_type, min_ratchet_level, fw_ratchet_level);
 			status = false;
 			goto fail;

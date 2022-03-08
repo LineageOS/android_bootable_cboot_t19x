@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020, NVIDIA CORPORATION.  All Rights Reserved.
+ * Copyright (c) 2019-2021, NVIDIA CORPORATION.  All Rights Reserved.
  *
  * NVIDIA Corporation and its licensors retain all intellectual property and
  * proprietary rights in and to this software and related documentation.  Any
@@ -48,10 +48,15 @@ uint32_t max_ctrl_supported = MAX_CTRL_SUPPORTED;
 #define APPL_PINMUX_PEX_RST						BIT(0)
 #define APPL_PINMUX_CLKREQ_OVERRIDE_EN			BIT(2)
 #define APPL_PINMUX_CLKREQ_OVERRIDE				BIT(3)
+#define APPL_PINMUX_CLK_OUTPUT_IN_OVERRIDE_EN	BIT(4)
+#define APPL_PINMUX_CLK_OUTPUT_IN_OVERRIDE		BIT(5)
 
 #define APPL_CTRL								0x4
 #define APPL_CTRL_SYS_PRE_DET_STATE				BIT(6)
-#define APP_LTSSM_ENABLE						BIT(7)
+#define APPL_CTRL_LTSSM_EN						BIT(7)
+
+#define APPL_RADM_STATUS						0xe4
+#define APPL_PM_XMT_TURNOFF_STATE				BIT(0)
 
 #define APPL_DM_TYPE							0x100
 #define APPL_DM_TYPE_MASK						GENMASK(3, 0)
@@ -79,6 +84,14 @@ uint32_t max_ctrl_supported = MAX_CTRL_SUPPORTED;
 #define APPL_DEBUG								0xd0
 #define SMLH_LTSSM_STATE_MASK					GENMASK(8, 3)
 #define SMLH_LTSSM_STATE_SHIFT					3
+#define LTSSM_STATE_PRE_DETECT					5
+#define APPL_DEBUG_PM_LINKST_IN_L2_LAT			BIT(21)
+#define LTSSM_STATE_DETECT_QUIET				0x00
+#define LTSSM_STATE_DETECT_ACT					0x08
+#define LTSSM_STATE_PRE_DETECT_QUIET			0x28
+#define LTSSM_STATE_DETECT_WAIT					0x30
+#define LTSSM_DELAY								10000
+#define LTSSM_TIMEOUT							120000
 
 #define PORT_LOGIC_AUX_CLK_FREQ_OFF				0xb40
 #define AUX_CLK_FREQ_MASK						GENMASK(9, 0)
@@ -118,6 +131,23 @@ uint32_t max_ctrl_supported = MAX_CTRL_SUPPORTED;
 
 #define PADCTL_PEX_CTL_2_PEX_L5_RST							0x08
 #define PADCTL_PEX_RST_E_INPUT								BIT(6)
+
+#define readl_poll_timeout(reg, val, cond, delay_us, timeout_us)	\
+({ \
+	uint32_t timeout = tegrabl_get_timestamp_us() + timeout_us; \
+	for (;;) { \
+		(val) = NV_READ32(reg); \
+		if (cond) \
+			break; \
+		if (timeout_us && (tegrabl_get_timestamp_us() > timeout)) { \
+			(val) = NV_READ32(reg); \
+			break; \
+		} \
+		if (delay_us) \
+			tegrabl_udelay(delay_us); \
+		} \
+		(cond) ? 0 : -TEGRABL_ERR_TIMEOUT; \
+})
 
 /**
  * @brief Definition of the register base address inside each PCIe controller.
@@ -202,7 +232,7 @@ uint32_t *tegrabl_pcie_get_dbi_reg(void)
  *
  * @retval Pointer to the array of iATU base addresses for each controller
  */
-uint32_t *regrabl_pcie_get_iatu_reg(void)
+uint32_t *tegrabl_pcie_get_iatu_reg(void)
 {
 	return &iatu_dma_offset[0];
 }
@@ -212,7 +242,7 @@ uint32_t *regrabl_pcie_get_iatu_reg(void)
  *
  * @retval Pointer to the array of IO map addresses for each controller
  */
-uint32_t *regrabl_pcie_get_io_base(void)
+uint32_t *tegrabl_pcie_get_io_base(void)
 {
 	return &pcie_io_base[0];
 }
@@ -222,7 +252,7 @@ uint32_t *regrabl_pcie_get_io_base(void)
  *
  * @retval Pointer to the array of Memory map addresses for each controller
  */
-uint32_t *regrabl_pcie_get_mem_base(void)
+uint32_t *tegrabl_pcie_get_mem_base(void)
 {
 	return &pcie_mem_base[0];
 }
@@ -646,7 +676,7 @@ tegrabl_error_t tegrabl_pcie_soc_init(uint8_t ctrl_num, uint8_t link_speed)
 
 	/** Start LTSSM from RP side */
 	val = pcie_appl_read32(ctrl_num, APPL_CTRL);
-	val |= APP_LTSSM_ENABLE;
+	val |= APPL_CTRL_LTSSM_EN;
 	pcie_appl_write32(ctrl_num, APPL_CTRL, val);
 
 	/** Poll for PCIe link up */
@@ -689,6 +719,125 @@ tegrabl_error_t tegrabl_pcie_soc_disable_link(uint8_t ctrl_num)
 	if (error != TEGRABL_NO_ERROR) {
 		pr_error("Failed to disable link on controller-%d\n", ctrl_num);
 		error = TEGRABL_ERR_DISABLE_FAILED;
+	}
+
+	return error;
+}
+
+static bool tegrabl_pcie_is_linkup(uint8_t ctrl_num)
+{
+	uint32_t val;
+
+	val = pcie_appl_read32(ctrl_num, APPL_LINK_STATUS);
+	if ((val & RDLH_LINK_UP_MASK) == RDLH_LINK_UP) {
+		return true;
+	}
+	return false;
+}
+
+static bool tegrabl_pcie_try_linkl2(uint8_t ctrl_num)
+{
+	uint32_t val;
+
+	val = pcie_appl_read32(ctrl_num, APPL_RADM_STATUS);
+	val |= APPL_PM_XMT_TURNOFF_STATE;
+	pcie_appl_write32(ctrl_num, APPL_RADM_STATUS, val);
+
+	tegrabl_udelay(10000);
+
+	val = pcie_appl_read32(ctrl_num, APPL_DEBUG);
+	if (val & APPL_DEBUG_PM_LINKST_IN_L2_LAT) {
+		return false;
+	}
+	return true;
+}
+
+void tegrabl_pcie_soc_pme_turnoff(uint8_t ctrl_num)
+{
+	uint32_t val;
+	tegrabl_error_t error;
+
+	pr_trace("%s(%u):\n", __func__, ctrl_num);
+
+	/* check linkup */
+	if (tegrabl_pcie_is_linkup(ctrl_num) == false) {
+		pr_info("PCIe (%u) Link is not UP\n", ctrl_num);
+		return;
+	}
+	pr_info("PCIe (%u) link is UP\n", ctrl_num);
+
+	if (tegrabl_pcie_try_linkl2(ctrl_num)) {
+		pr_error("Link didn't transition to L2 state\n");
+		/*
+		 * TX lane clock freq will reset to Gen1 only if link is in L2
+		 * or detect state.
+		 * So apply pex_rst to end point to force RP to go into detect
+		 * state
+		 */
+
+		val = pcie_appl_read32(ctrl_num, APPL_PINMUX);
+		val &= ~APPL_PINMUX_PEX_RST;
+		pcie_appl_write32(ctrl_num, APPL_PINMUX, val);
+
+		error = readl_poll_timeout(appl_reg_offset[ctrl_num] + APPL_DEBUG,
+						val,
+						((val & SMLH_LTSSM_STATE_MASK) == LTSSM_STATE_DETECT_QUIET) ||
+						((val & SMLH_LTSSM_STATE_MASK) == LTSSM_STATE_DETECT_ACT) ||
+						((val & SMLH_LTSSM_STATE_MASK) == LTSSM_STATE_PRE_DETECT_QUIET) ||
+						((val & SMLH_LTSSM_STATE_MASK) == LTSSM_STATE_DETECT_WAIT),
+						LTSSM_DELAY, LTSSM_TIMEOUT);
+
+		if (error)
+			pr_error("Link didn't go to detect state\n");
+
+		/*
+		 * Deassert LTSSM state to stop the state toggling between
+		 * polling and detect.
+		 */
+		val = pcie_appl_read32(ctrl_num, APPL_CTRL);
+		val &= ~APPL_CTRL_LTSSM_EN;
+		pcie_appl_write32(ctrl_num, APPL_CTRL, val);
+	}
+
+	/*
+	 * DBI registers may not be accessible after this as PLL-E would be
+	 * down depending on how CLKREQ is pulled by end point
+	 */
+	val = pcie_appl_read32(ctrl_num, APPL_PINMUX);
+	val |= (APPL_PINMUX_CLKREQ_OVERRIDE_EN | APPL_PINMUX_CLKREQ_OVERRIDE);
+	/* Cut REFCLK to slot */
+	val |= APPL_PINMUX_CLK_OUTPUT_IN_OVERRIDE_EN;
+	val &= ~APPL_PINMUX_CLK_OUTPUT_IN_OVERRIDE;
+	pcie_appl_write32(ctrl_num, APPL_PINMUX, val);
+}
+
+tegrabl_error_t tegrabl_pcie_soc_powergate(uint8_t ctrl_num)
+{
+	tegrabl_error_t error;
+
+	pr_trace("%s: %u\n", __func__, ctrl_num);
+	switch (ctrl_num) {
+	case 0:
+		error = tegrabl_pcie_powergate(TEGRA194_POWER_DOMAIN_PCIEX8B);
+		break;
+	case 1:
+	case 2:
+	case 3:
+		error = tegrabl_pcie_powergate(TEGRA194_POWER_DOMAIN_PCIEX1A);
+		break;
+	case 4:
+		error = tegrabl_pcie_powergate(TEGRA194_POWER_DOMAIN_PCIEX4A);
+		break;
+	case 5:
+		error = tegrabl_pcie_powergate(TEGRA194_POWER_DOMAIN_PCIEX8A);
+		break;
+	default:
+		error = TEGRABL_ERR_INVALID;
+		break;
+	}
+
+	if (error != TEGRABL_NO_ERROR) {
+		pr_error("%s: Failed to powergate (err=%d)\n", __func__, error);
 	}
 
 	return error;

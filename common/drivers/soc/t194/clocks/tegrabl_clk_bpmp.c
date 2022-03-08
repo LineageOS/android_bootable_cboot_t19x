@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2020, NVIDIA Corporation.  All rights reserved.
+ * Copyright (c) 2017-2021, NVIDIA Corporation.  All rights reserved.
  *
  * NVIDIA Corporation and its licensors retain all intellectual property
  * and proprietary rights in and to this software, related documentation
@@ -1864,6 +1864,35 @@ tegrabl_error_t tegrabl_pcie_unpowergate(uint32_t domain_id)
 			goto fail;
 		} else {
 			pr_trace("BPMP: UnPowergated %d\n", pg_request.id);
+		}
+	} else {
+		err = TEGRABL_ERR_INVALID;
+	}
+
+fail:
+	return err;
+}
+
+tegrabl_error_t tegrabl_pcie_powergate(uint32_t domain_id)
+{
+	tegrabl_error_t err = TEGRABL_NO_ERROR;
+
+	struct mrq_pg_request pg_request = {
+		.cmd = CMD_PG_SET_STATE,
+		.id = domain_id,
+		.set_state = {
+			.state = PG_STATE_OFF,
+		}
+	};
+
+	if (domain_id <= TEGRA194_POWER_DOMAIN_MAX) {
+		err = tegrabl_ccplex_bpmp_xfer(&pg_request, NULL, sizeof(pg_request), 0, MRQ_PG);
+		if (err != TEGRABL_NO_ERROR) {
+			pr_error("BPMP: PG_STATE_OFF for %d failed\n", pg_request.id);
+			TEGRABL_SET_HIGHEST_MODULE(err);
+			goto fail;
+		} else {
+			pr_trace("BPMP: Powergated %d\n", pg_request.id);
 		}
 	} else {
 		err = TEGRABL_ERR_INVALID;
