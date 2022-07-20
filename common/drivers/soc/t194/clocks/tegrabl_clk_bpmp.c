@@ -553,6 +553,7 @@ static int32_t tegrabl_module_to_bpmp_id(
 			return TEGRA194_CLK_AUD_MCLK;
 			break;
 		}
+		break;
 	}
 	case TEGRABL_MODULE_SATA:
 	{
@@ -564,6 +565,7 @@ static int32_t tegrabl_module_to_bpmp_id(
 			return TEGRA194_CLK_SATA;
 			break;
 		}
+		break;
 	}
 	case TEGRABL_MODULE_SATACOLD:
 	{
@@ -572,6 +574,7 @@ static int32_t tegrabl_module_to_bpmp_id(
 			return TEGRA194_RESET_SATACOLD;
 			break;
 		}
+		break;
 	}
 	case TEGRABL_MODULE_SATA_OOB:
 	{
@@ -580,6 +583,7 @@ static int32_t tegrabl_module_to_bpmp_id(
 			return TEGRA194_CLK_SATA_OOB;
 			break;
 		}
+		break;
 	}
 	case TEGRABL_MODULE_PCIE:
 	{
@@ -588,6 +592,7 @@ static int32_t tegrabl_module_to_bpmp_id(
 			return TEGRA194_RESET_PCIE;
 			break;
 		}
+		break;
 	}
 	case TEGRABL_MODULE_PCIEXCLK:
 	{
@@ -596,6 +601,7 @@ static int32_t tegrabl_module_to_bpmp_id(
 			return TEGRA194_RESET_PCIEXCLK;
 			break;
 		}
+		break;
 	}
 	case TEGRABL_MODULE_AFI:
 	{
@@ -604,6 +610,7 @@ static int32_t tegrabl_module_to_bpmp_id(
 			return TEGRA194_RESET_AFI;
 			break;
 		}
+		break;
 	}
 	case TEGRABL_MODULE_MPHY:
 	{
@@ -675,6 +682,7 @@ static int32_t tegrabl_module_to_bpmp_id(
 			}
 			break;
 		}
+		break;
 	}
 	case TEGRABL_MODULE_PCIE_APB:
 	{
