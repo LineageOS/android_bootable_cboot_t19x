@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2021, NVIDIA Corporation.  All Rights Reserved.
+ * Copyright (c) 2015-2022, NVIDIA Corporation.  All Rights Reserved.
  *
  * NVIDIA Corporation and its licensors retain all intellectual property and
  * proprietary rights in and to this software and related documentation.  Any
@@ -85,13 +85,7 @@ uint32_t read_miscreg_strap(tegrabl_strap_field_t fld)
 		boot_dev_val = NV_DRF_VAL(MISCREG, STRAP_STRAPPING_OPT_A,
 					  BOOT_SELECT, strap_val);
 
-#if !defined(CONFIG_ENABLE_MEMBCT)
-		/* use lower 2 bits for RAM_CODE */
-		ram_code_val = (NV_DRF_VAL(MISCREG, STRAP_STRAPPING_OPT_A,
-					   RAM_CODE, strap_val)) & 0x3U;
-#else
 		ram_code_val = (NV_DRF_VAL(MISCREG, STRAP_STRAPPING_OPT_A, RAM_CODE, strap_val));
-#endif
 
 		is_strap_read = true;
 	}

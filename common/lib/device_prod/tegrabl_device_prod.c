@@ -35,7 +35,7 @@ tegrabl_error_t tegrabl_device_prod_register(uintptr_t data, uint32_t size)
 
 	if ((data == 0UL) || (size == 0UL)) {
 		error = TEGRABL_ERROR(TEGRABL_ERR_INVALID, AUX_INFO_DEVICE_PROD_REGISTER);
-		TEGRABL_SET_ERROR_STRING(error, "data = %lx, size = %lx", data, size);
+		TEGRABL_PRINT_DEBUG_STRING(error, "data = %lx, size = %lx", data, size);
 		goto fail;
 	}
 	device_prod_data = data;
