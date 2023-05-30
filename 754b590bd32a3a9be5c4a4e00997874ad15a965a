@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "68380a49_05b3eeaf",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 14048
+      },
+      "writtenOn": "2023-05-30T03:08:53Z",
+      "side": 1,
+      "message": "This fixes the failure to run source built cboot on the r34/r35 t194 boot stack.",
+      "revId": "754b590bd32a3a9be5c4a4e00997874ad15a965a",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
