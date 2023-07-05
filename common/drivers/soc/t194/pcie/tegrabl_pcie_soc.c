@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2021, NVIDIA CORPORATION.  All Rights Reserved.
+ * Copyright (c) 2019-2023, NVIDIA CORPORATION.  All Rights Reserved.
  *
  * NVIDIA Corporation and its licensors retain all intellectual property and
  * proprietary rights in and to this software and related documentation.  Any
@@ -347,6 +347,29 @@ static tegrabl_error_t tegrabl_locate_pcie_ctrl_in_dt(void *fdt, uint8_t ctrl_nu
 
 fail:
 	return err;
+}
+
+/* returns pcie controller node offset in fdt */
+int32_t tegrabl_get_pcie_ctrl_node_offset(uint8_t ctrl_num)
+{
+	tegrabl_error_t err = TEGRABL_NO_ERROR;
+	int32_t node_offset = 0;
+	void *fdt;
+
+	err = tegrabl_dt_get_fdt_handle(TEGRABL_DT_BL, &fdt);
+	if (TEGRABL_NO_ERROR != err) {
+		pr_error("%s: failed to get DT_BL; error=0x%x\n", __func__, err);
+		goto fail;
+	}
+
+	err = tegrabl_locate_pcie_ctrl_in_dt(fdt, ctrl_num, &node_offset);
+	if (err != TEGRABL_NO_ERROR) {
+		pr_error("%s: no pcie controller node found in DT\n", __func__);
+		goto fail;
+	}
+
+fail:
+    return node_offset;
 }
 
 static void tegrabl_power_on_one_phy(uintptr_t base)
