@@ -67,11 +67,13 @@ struct tboot_cpubl_params {
 			/**< Total size of controller pad settings */
 			TEGRABL_DECLARE_ALIGNED(uint64_t controller_prod_settings_size, 8);
 
+#ifndef CONFIG_ENABLE_NVDISP_INIT
 			/**< Address of ramoops */
 			TEGRABL_DECLARE_ALIGNED(uint64_t ramoops_address, 8);
 
 			/**< Total size of ramoops */
 			TEGRABL_DECLARE_ALIGNED(uint64_t ramoops_size, 8);
+#endif
 
 			/**< Parameters for Secure_OS/TLK passed via GPR */
 			TEGRABL_DECLARE_ALIGNED(uint64_t secure_os_params[4], 8);

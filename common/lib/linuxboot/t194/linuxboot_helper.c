@@ -936,6 +936,7 @@ static tegrabl_error_t update_cv_gos_info(void *fdt, int nodeoffset)
 	return TEGRABL_NO_ERROR;
 }
 
+#ifndef CONFIG_ENABLE_NVDISP_INIT
 static tegrabl_error_t update_ramoops_info(void *fdt, int nodeoffset)
 {
 	int node;
@@ -964,6 +965,7 @@ static tegrabl_error_t update_ramoops_info(void *fdt, int nodeoffset)
 
 	return TEGRABL_NO_ERROR;
 }
+#endif
 
 static tegrabl_error_t add_device_info(void *fdt, int nodeoffset)
 {
@@ -1090,7 +1092,9 @@ static struct tegrabl_linuxboot_dtnode_info extra_nodes[] = {
 	{ "arm-pmu", update_armpmu_floorsweeping_config },
 	{ "reserved-memory", update_vpr_info },
 	{ "reserved-memory", update_cv_gos_info },
+#ifndef CONFIG_ENABLE_NVDISP_INIT
 	{ "reserved-memory", update_ramoops_info },
+#endif
 	{ "chosen", add_device_info },
 	{ NULL, NULL},
 };
