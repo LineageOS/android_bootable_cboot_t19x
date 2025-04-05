@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2021, NVIDIA Corporation.  All Rights Reserved.
+ * Copyright (c) 2015-2022, NVIDIA Corporation.  All Rights Reserved.
  *
  * NVIDIA Corporation and its licensors retain all intellectual property and
  * proprietary rights in and to this software and related documentation.  Any
@@ -936,6 +936,35 @@ static tegrabl_error_t update_cv_gos_info(void *fdt, int nodeoffset)
 	return TEGRABL_NO_ERROR;
 }
 
+static tegrabl_error_t update_ramoops_info(void *fdt, int nodeoffset)
+{
+	int node;
+	int dterr;
+	uint64_t reg[2];
+	uint64_t ramoops_addr, ramoops_size;
+
+	ramoops_addr = boot_params->ramoops_address;
+	ramoops_size = boot_params->ramoops_size;
+
+	reg[0] = cpu_to_fdt64(ramoops_addr);
+	reg[1] = cpu_to_fdt64(ramoops_size);
+
+	node = fdt_subnode_offset(fdt, nodeoffset, "ramoops_carveout");
+	if (node < 0) {
+		/* console-ramoops DT node not present. so return */
+		return TEGRABL_NO_ERROR;
+	}
+
+	dterr = fdt_setprop(fdt, node, "reg", reg, 2 * sizeof(uint64_t));
+	if (dterr < 0) {
+		pr_error("Failed to set reg base for ramoops_carveout node: %s\n",
+			 fdt_strerror(dterr));
+		return TEGRABL_ERROR(TEGRABL_ERR_ADD_FAILED, 0);
+	}
+
+	return TEGRABL_NO_ERROR;
+}
+
 static tegrabl_error_t add_device_info(void *fdt, int nodeoffset)
 {
 	tegrabl_error_t status = TEGRABL_NO_ERROR;
@@ -1061,6 +1090,7 @@ static struct tegrabl_linuxboot_dtnode_info extra_nodes[] = {
 	{ "arm-pmu", update_armpmu_floorsweeping_config },
 	{ "reserved-memory", update_vpr_info },
 	{ "reserved-memory", update_cv_gos_info },
+	{ "reserved-memory", update_ramoops_info },
 	{ "chosen", add_device_info },
 	{ NULL, NULL},
 };
