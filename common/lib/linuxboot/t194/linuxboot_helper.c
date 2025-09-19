@@ -1625,6 +1625,29 @@ fail:
 	return err;
 }
 
+tegrabl_error_t tegrabl_get_vendor_boot_load_addr(void **load_addr)
+{
+	static void *vendor_boot_load_addr;
+	tegrabl_error_t err = TEGRABL_NO_ERROR;
+
+	if (vendor_boot_load_addr == NULL) {
+		*load_addr = tegrabl_alloc_align(TEGRABL_HEAP_DMA,
+			BOOT_IMAGE_ALIGNMENT, BOOT_IMAGE_MAX_SIZE);
+		if (*load_addr == NULL) {
+			pr_error("Failed to allocate memory (0x%08x) to load vendor boot image\n", BOOT_IMAGE_MAX_SIZE);
+			err = TEGRABL_ERROR(TEGRABL_ERR_NO_MEMORY, 0);
+			goto fail;
+		}
+		vendor_boot_load_addr = *load_addr;
+	} else {
+		*load_addr = vendor_boot_load_addr;
+	}
+	pr_trace("%s(): %u, vendor boot image load addr: %p\n", __func__, __LINE__, *load_addr);
+
+fail:
+	return err;
+}
+
 uint64_t tegrabl_get_kernel_load_addr(void)
 {
 	uint64_t kernel_load_addr;
