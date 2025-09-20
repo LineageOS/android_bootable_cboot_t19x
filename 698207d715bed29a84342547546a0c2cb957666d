@@ -22,6 +22,30 @@
       },
       "revId": "698207d715bed29a84342547546a0c2cb957666d",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3121c74d_28107c79",
+        "filename": "common/lib/linuxboot/t194/linuxboot_helper.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1628,
+      "author": {
+        "id": 14048
+      },
+      "writtenOn": "2025-09-20T17:55:53Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "ed733f51_940bf334",
+      "range": {
+        "startLine": 1628,
+        "startChar": 28,
+        "endLine": 1628,
+        "endChar": 39
+      },
+      "revId": "698207d715bed29a84342547546a0c2cb957666d",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
